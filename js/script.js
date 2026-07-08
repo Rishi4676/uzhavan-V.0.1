@@ -1832,42 +1832,6 @@ function getLocalFallbackReply(message, lang) {
 }
 
 // Sends the user message and fetches reply from server
-// ─── Groq Direct API Key (browser-safe, public endpoint) ───────────────────
-const GROQ_API_KEY = "YOUR_GROQ_API_KEY_PLACEHOLDER";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-
-// Build a strong agriculture-focused system prompt
-function buildAgriSystemPrompt(lang) {
-  const isTamil = lang === "ta";
-  const isHindi = lang === "hi";
-  const langInstruct = isTamil
-    ? "Always respond in Tamil (தமிழ்) language using clear, simple words a farmer can understand."
-    : isHindi
-      ? "Always respond in Hindi (हिन्दी) language using clear, simple words a farmer can understand."
-      : "Always respond in English using clear, simple words a farmer can understand.";
-
-  return `You are AgriBot, an expert AI agricultural advisor for Indian farmers — especially Tamil Nadu farmers.
-${langInstruct}
-
-Your expertise includes:
-- Crop selection, sowing calendars, soil preparation, fertilization schedules
-- Pest & disease identification and organic/chemical treatment plans
-- Weather-based farming advice, irrigation scheduling, water management
-- Government schemes: PM-Kisan, Kisan Credit Card (KCC), PMFBY crop insurance, subsidies
-- Market prices, best selling times, mandis, and commodity trends
-- Post-harvest handling, storage, and value addition techniques
-- Sustainable farming, drip irrigation, mulching, and soil health
-
-Rules:
-- Be direct, practical, and actionable — farmers need specific steps, not vague answers
-- When asked about a pest or disease, always give: (1) name, (2) symptoms, (3) chemical solution with dosage, (4) organic alternative, (5) prevention tip
-- When asked about a crop, give a complete advisory: soil, water, fertilizer, common problems
-- Always mention if a government scheme or subsidy applies
-- Format answers with clear line breaks and bullet points when listing steps
-- Keep responses concise (3-6 sentences or a short bullet list) unless a detailed answer is genuinely needed`;
-}
-
 window.sendChatbotMessage = async function () {
   const input = document.getElementById("chatbot-input");
   const chat = document.getElementById("chatbot-messages");
@@ -1886,48 +1850,39 @@ window.sendChatbotMessage = async function () {
 
   const selectedLang = document.getElementById("chatbot-lang")?.value || "en";
 
-  // ── Call Groq API directly from the browser ──────────────────────────────
   try {
-    const res = await fetch(GROQ_ENDPOINT, {
+    const res = await fetch("/api/chatbot", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: buildAgriSystemPrompt(selectedLang) },
-          { role: "user", content: msg },
-        ],
-        temperature: 0.4,
-        max_tokens: 512,
+        message: msg,
+        language: selectedLang,
       }),
     });
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(
-        errData?.error?.message || `Groq API error ${res.status}`,
+        errData?.reply || errData?.error || `Chatbot server error ${res.status}`,
       );
     }
 
     const data = await res.json();
-    const reply =
-      data?.choices?.[0]?.message?.content?.trim() ||
-      "Sorry, I could not generate a response. Please try again.";
+    const reply = data?.reply || "Sorry, I could not generate a response. Please try again.";
 
     if (typingEl) {
       typingEl.outerHTML = `
         <div class="bot-msg" style="border-left: 3px solid var(--primary-green); padding-left: 10px;">
           ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
           <div style="font-size: 0.65rem; color: #aaa; margin-top: 6px; text-align: right;">
-            <i class="fas fa-robot"></i> Powered by Groq · Llama 3.3 70B
+            <i class="fas fa-robot"></i> Powered by AgriBot AI
           </div>
         </div>`;
     }
-  } catch (groqErr) {
-    console.warn("Groq API call failed:", groqErr.message);
+  } catch (err) {
+    console.warn("Chatbot API call failed:", err.message);
     // Graceful fallback: show error message + local reply
     const localReply = getLocalFallbackReply(msg, selectedLang);
     if (typingEl) {
@@ -1935,7 +1890,7 @@ window.sendChatbotMessage = async function () {
         <div class="bot-msg">
           ${localReply.replace(/\n/g, "<br>")}
           <div style="font-size: 0.68rem; color: #e57373; margin-top: 6px; background: #fff3f3; padding: 5px 8px; border-radius: 5px;">
-            <i class="fas fa-exclamation-triangle"></i> AI offline: ${groqErr.message}. Showing local response.
+            <i class="fas fa-exclamation-triangle"></i> AI offline: ${err.message}. Showing local response.
           </div>
         </div>`;
     }

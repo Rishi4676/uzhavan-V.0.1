@@ -349,11 +349,43 @@ Example Output:
   }
 });
 
+// Build a strong agriculture-focused system prompt
+function buildAgriSystemPrompt(lang) {
+  const isTamil = lang === "ta";
+  const isHindi = lang === "hi";
+  const langInstruct = isTamil
+    ? "Always respond in Tamil (தமிழ்) language using clear, simple words a farmer can understand."
+    : isHindi
+      ? "Always respond in Hindi (हिन्दी) language using clear, simple words a farmer can understand."
+      : "Always respond in English using clear, simple words a farmer can understand.";
+
+  return `You are AgriBot, an expert AI agricultural advisor for Indian farmers — especially Tamil Nadu farmers.
+${langInstruct}
+
+Your expertise includes:
+- Crop selection, sowing calendars, soil preparation, fertilization schedules
+- Pest & disease identification and organic/chemical treatment plans
+- Weather-based farming advice, irrigation scheduling, water management
+- Government schemes: PM-Kisan, Kisan Credit Card (KCC), PMFBY crop insurance, subsidies
+- Market prices, best selling times, mandis, and commodity trends
+- Post-harvest handling, storage, and value addition techniques
+- Sustainable farming, drip irrigation, mulching, and soil health
+
+Rules:
+- Be direct, practical, and actionable — farmers need specific steps, not vague answers
+- When asked about a pest or disease, always give: (1) name, (2) symptoms, (3) chemical solution with dosage, (4) organic alternative, (5) prevention tip
+- When asked about a crop, give a complete advisory: soil, water, fertilizer, common problems
+- Always mention if a government scheme or subsidy applies
+- Format answers with clear line breaks and bullet points when listing steps
+- Keep responses concise (3-6 sentences or a short bullet list) unless a detailed answer is genuinely needed`;
+}
+
 // Chatbot Endpoint
 app.post("/api/chatbot", async (req, res) => {
   try {
     const { message, language } = req.body || {};
-    const prompt = `You are a helpful agricultural assistant for farmers. Answer the user's question in ${language === "ta" ? "Tamil" : "English"}. Keep it concise and practical. Question: ${message}`;
+    const systemPrompt = buildAgriSystemPrompt(language || "en");
+    const prompt = `${systemPrompt}\n\nUser Question: ${message}`;
 
     // 1. Try Groq
     try {
@@ -404,6 +436,7 @@ app.post("/api/chatbot", async (req, res) => {
     });
   }
 });
+
 
 if (require.main === module) {
   const { seedDatabase } = require("./repositories/seedData");
