@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_pest">
+      Pest &amp; Disease Detection - Smart Farmer Assistant
+    </title>
+    <meta
+      name="description"
+      content="AI-powered crop pest and disease detection with fertilizer recommendations for Indian farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" class="active" data-key="nav_pest"
+              >Pest &amp; Disease</a
+            >
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2
+        style="
+          color: var(--primary-green);
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        "
+      >
+        <i class="fas fa-microscope"></i>
+        <span data-key="pest_title">AI Pest &amp; Disease Detection</span>
+      </h2>
+      <p style="color: #666; margin-bottom: 24px">
+        Upload a clear photo of your crop leaf or plant to identify diseases and
+        get fertilizer recommendations.
+      </p>
+
+      <!-- Upload Section -->
+      <div class="pest-upload-card">
+        <div
+          class="upload-zone"
+          id="upload-zone"
+          onclick="document.getElementById('pest-upload').click()"
+          ondragover="event.preventDefault()"
+          ondrop="handleDrop(event)"
+        >
+          <i class="fas fa-cloud-upload-alt upload-icon"></i>
+          <p class="upload-text">
+            Click or drag &amp; drop your crop image here
+          </p>
+          <p class="upload-subtext">Supports JPG, PNG, WEBP • Max 10MB</p>
+          <input
+            type="file"
+            id="pest-upload"
+            accept="image/*"
+            onchange="previewImage(event)"
+            style="display: none"
+          />
+        </div>
+
+        <div
+          id="preview-section"
+          style="display: none; margin-top: 20px; text-align: center"
+        >
+          <img
+            id="img-preview"
+            src="#"
+            alt="Preview"
+            class="pest-preview-img"
+          />
+          <p
+            id="preview-filename"
+            style="color: #666; font-size: 0.85rem; margin-top: 8px"
+          ></p>
+        </div>
+
+        <!-- Crop Type Helper -->
+        <div class="form-group" style="margin-top: 20px">
+          <label
+            style="
+              font-weight: 600;
+              color: #333;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            "
+          >
+            <i class="fas fa-seedling" style="color: var(--primary-green)"></i>
+            Crop Type (optional - improves accuracy)
+          </label>
+          <select
+            id="crop-type-select"
+            style="
+              width: 100%;
+              padding: 10px;
+              border-radius: 8px;
+              border: 1px solid #ccc;
+              margin-top: 6px;
+              font-size: 1rem;
+            "
+          >
+            <option value="">-- Select Crop Type --</option>
+            <option value="paddy">Paddy / Rice</option>
+            <option value="wheat">Wheat</option>
+            <option value="maize">Maize / Corn</option>
+            <option value="tomato">Tomato</option>
+            <option value="cotton">Cotton</option>
+            <option value="sugarcane">Sugarcane</option>
+            <option value="groundnut">Groundnut</option>
+            <option value="banana">Banana</option>
+            <option value="mango">Mango</option>
+            <option value="chilli">Chilli / Pepper</option>
+            <option value="brinjal">Brinjal / Eggplant</option>
+            <option value="soybean">Soybean</option>
+          </select>
+        </div>
+
+        <button
+          class="btn"
+          onclick="detectDisease()"
+          data-key="btn_detect"
+          style="
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          "
+        >
+          <i class="fas fa-search-plus"></i> Detect Disease &amp; Get
+          Recommendations
+        </button>
+      </div>
+
+      <!-- Result Section -->
+      <div id="pest-result"></div>
+
+      <!-- Quick Reference Disease Cards -->
+      <div class="pest-quick-ref">
+        <h3
+          style="
+            color: var(--primary-green);
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+          "
+        >
+          <i class="fas fa-book-medical"></i> Common Crop Diseases Quick
+          Reference
+        </h3>
+        <div class="disease-ref-grid">
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #fff3e0">🍂</div>
+            <h4>Leaf Blight</h4>
+            <p>Brown water-soaked lesions on leaves</p>
+            <span class="disease-tag" style="background: #e65100">Fungal</span>
+          </div>
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #fce4ec">🔴</div>
+            <h4>Rust Disease</h4>
+            <p>Orange-red pustules on leaf surface</p>
+            <span class="disease-tag" style="background: #c62828">Fungal</span>
+          </div>
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #e8f5e9">🟢</div>
+            <h4>Mosaic Virus</h4>
+            <p>Yellow-green mottled patches on leaves</p>
+            <span class="disease-tag" style="background: #1565c0">Viral</span>
+          </div>
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #f3e5f5">🦟</div>
+            <h4>Aphid Infestation</h4>
+            <p>Sticky residue, curled yellowing leaves</p>
+            <span class="disease-tag" style="background: #6a1b9a">Pest</span>
+          </div>
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #e0f7fa">⚫</div>
+            <h4>Blast Disease</h4>
+            <p>Diamond-shaped lesions with grey center</p>
+            <span class="disease-tag" style="background: #00695c">Fungal</span>
+          </div>
+          <div class="disease-ref-card">
+            <div class="disease-ref-icon" style="background: #fff8e1">🌿</div>
+            <h4>Powdery Mildew</h4>
+            <p>White powdery coating on leaves</p>
+            <span class="disease-tag" style="background: #827717">Fungal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>Your one-stop solution for modern agriculture.</p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/script.js"></script>
+  </body>
+</html>
+

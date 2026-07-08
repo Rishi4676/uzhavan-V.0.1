@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_schemes">
+      Government Schemes - Smart Farmer Assistant
+    </title>
+    <meta
+      name="description"
+      content="Complete list of government agriculture schemes, loans, and subsidies for Indian farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li>
+            <a href="schemes.html" class="active" data-key="nav_schemes"
+              >Schemes</a
+            >
+          </li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <div style="text-align: center; margin-bottom: 40px">
+        <h2
+          style="
+            color: var(--primary-green);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+          "
+        >
+          <i class="fas fa-landmark"></i>
+          <span data-key="schemes_title">Agriculture Government Schemes</span>
+        </h2>
+        <p style="color: #666; margin-top: 8px; font-size: 1rem">
+          Browse all central and state government schemes for farmers — loans,
+          insurance, subsidies &amp; more
+        </p>
+      </div>
+
+      <!-- Scheme Category Tabs -->
+      <div class="scheme-tabs">
+        <button class="scheme-tab active" onclick="filterSchemes('all', this)">
+          <i class="fas fa-th"></i> All Schemes
+        </button>
+        <button class="scheme-tab" onclick="filterSchemes('loan', this)">
+          <i class="fas fa-rupee-sign"></i> Loans
+        </button>
+        <button class="scheme-tab" onclick="filterSchemes('insurance', this)">
+          <i class="fas fa-shield-alt"></i> Insurance
+        </button>
+        <button class="scheme-tab" onclick="filterSchemes('subsidy', this)">
+          <i class="fas fa-hand-holding-heart"></i> Subsidies
+        </button>
+        <button class="scheme-tab" onclick="filterSchemes('technology', this)">
+          <i class="fas fa-tractor"></i> Technology
+        </button>
+        <button class="scheme-tab" onclick="filterSchemes('state', this)">
+          <i class="fas fa-map-marker-alt"></i> State (TN)
+        </button>
+      </div>
+
+      <!-- Schemes Grid -->
+      <div class="schemes-grid" id="schemes-grid">
+        <!-- PM-Kisan -->
+        <div class="scheme-card" data-category="subsidy">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #1b5e20, #388e3c)"
+          >
+            <i class="fas fa-hand-holding-usd scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>PM-Kisan Samman Nidhi</h3>
+            <p>
+              Receive ₹6,000 per year in three equal installments of ₹2,000
+              directly to your bank account — no middlemen.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-money-bill-wave"></i> ₹6,000/year</span>
+              <span><i class="fas fa-users"></i> All farmers</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Small &amp; marginal farmers with
+              cultivable land
+            </div>
+            <a
+              href="https://pmkisan.gov.in/RegistrationFormNew.aspx"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- PMFBY - Crop Insurance -->
+        <div class="scheme-card" data-category="insurance">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #01579b, #0288d1)"
+          >
+            <i class="fas fa-shield-alt scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>PM Fasal Bima Yojana (PMFBY)</h3>
+            <p>
+              Protect your crops from floods, drought, pests &amp; natural
+              calamities. Low premium rates with government backing.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-percentage"></i> 2% premium (Kharif)</span>
+              <span><i class="fas fa-leaf"></i> All crop types</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> All loanee and non-loanee farmers
+            </div>
+            <a
+              href="https://pmfby.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- Kisan Credit Card -->
+        <div class="scheme-card" data-category="loan">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #4a148c, #7b1fa2)"
+          >
+            <i class="fas fa-credit-card scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>Kisan Credit Card (KCC)</h3>
+            <p>
+              Get flexible revolving credit up to ₹3 lakh at 4% interest rate.
+              Use for seeds, fertilizers, equipment &amp; emergency needs.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-percentage"></i> 4% interest</span>
+              <span><i class="fas fa-rupee-sign"></i> Up to ₹3 Lakh</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Farmers, Tenant farmers, SHGs
+            </div>
+            <a
+              href="https://www.nabard.org/content1.aspx?id=591"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- Soil Health Card -->
+        <div class="scheme-card" data-category="subsidy">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #795548, #a1887f)"
+          >
+            <i class="fas fa-vial scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>Soil Health Card Scheme</h3>
+            <p>
+              Get your soil tested FREE and receive a health card with crop-wise
+              fertilizer recommendations to boost yield.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-flask"></i> Free soil test</span>
+              <span><i class="fas fa-clipboard-check"></i> NPK report</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> All farmers across India
+            </div>
+            <a
+              href="https://www.soilhealth.dac.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- PM Kisan Maan Dhan Yojana -->
+        <div class="scheme-card" data-category="subsidy">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #bf360c, #e64a19)"
+          >
+            <i class="fas fa-user-clock scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>PM Kisan Maan Dhan Yojana</h3>
+            <p>
+              Pension scheme for small farmers — receive ₹3,000/month after the
+              age of 60. Contribute just ₹55–₹200/month.
+            </p>
+            <div class="scheme-details">
+              <span
+                ><i class="fas fa-calendar-check"></i> ₹3,000/month
+                pension</span
+              >
+              <span><i class="fas fa-user-check"></i> Age 18–40</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Small &amp; marginal farmers aged
+              18–40
+            </div>
+            <a
+              href="https://maandhan.in/shramyogi"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- NABARD Farm Loan -->
+        <div class="scheme-card" data-category="loan">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #006064, #00838f)"
+          >
+            <i class="fas fa-university scheme-icon"></i>
+            <div class="scheme-badge">NABARD</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>NABARD Agriculture Loan</h3>
+            <p>
+              NABARD-backed loans for farm mechanization, irrigation, land
+              development, and allied activities at subsidized rates.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-rupee-sign"></i> Up to ₹50 Lakh</span>
+              <span><i class="fas fa-percent"></i> 7% interest</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Individual farmers &amp;
+              cooperatives
+            </div>
+            <a
+              href="https://www.nabard.org/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- PM KUSUM Solar -->
+        <div class="scheme-card" data-category="technology">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #f57f17, #fbc02d)"
+          >
+            <i class="fas fa-solar-panel scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>PM KUSUM Solar Pump Scheme</h3>
+            <p>
+              Install solar water pumps with up to 90% government subsidy. Save
+              electricity costs and ensure reliable irrigation.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-percentage"></i> 90% subsidy</span>
+              <span><i class="fas fa-tint"></i> Solar irrigation</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> All farmers with own land
+            </div>
+            <a
+              href="https://mnre.gov.in/solar/schemes"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- e-NAM -->
+        <div class="scheme-card" data-category="technology">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #1a237e, #283593)"
+          >
+            <i class="fas fa-store scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>e-NAM (Online Mandi)</h3>
+            <p>
+              Sell your crops online across India through the National
+              Agriculture Market platform. Get better prices directly.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-globe"></i> 1,000+ mandis</span>
+              <span><i class="fas fa-chart-line"></i> Better pricing</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> All registered farmers
+            </div>
+            <a
+              href="https://enam.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- Paramparagat Krishi Vikas Yojana -->
+        <div class="scheme-card" data-category="subsidy">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #2e7d32, #66bb6a)"
+          >
+            <i class="fas fa-leaf scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>Paramparagat Krishi Vikas Yojana</h3>
+            <p>
+              Promote organic farming with ₹50,000/hectare financial assistance
+              over 3 years for training, inputs &amp; certification.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-rupee-sign"></i> ₹50,000/ha</span>
+              <span><i class="fas fa-recycle"></i> Organic farming</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Farmers wanting to switch to organic
+            </div>
+            <a
+              href="https://pgsindia-ncof.gov.in/PKVY/Index.aspx"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- TN Uzhavar Urimai Thittam -->
+        <div class="scheme-card" data-category="state">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #880e4f, #c2185b)"
+          >
+            <i class="fas fa-map-marked-alt scheme-icon"></i>
+            <div class="scheme-badge">Tamil Nadu</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>TN Uzhavar Urimai Thittam</h3>
+            <p>
+              Tamil Nadu's scheme providing ₹1,000/month support to small and
+              marginal farmers as livelihood assistance.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-rupee-sign"></i> ₹1,000/month</span>
+              <span><i class="fas fa-map"></i> Tamil Nadu only</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> TN small &amp; marginal farmers
+            </div>
+            <a
+              href="https://www.tnagrisnet.tn.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- TN Chief Minister Farmer Relief Fund -->
+        <div class="scheme-card" data-category="state">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #311b92, #512da8)"
+          >
+            <i class="fas fa-hands-helping scheme-icon"></i>
+            <div class="scheme-badge">Tamil Nadu</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>TN CM Farmer Relief Fund</h3>
+            <p>
+              Emergency relief for farmers affected by natural calamities.
+              Provides compensation for crop damage and loss.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-first-aid"></i> Emergency relief</span>
+              <span><i class="fas fa-cloud-rain"></i> Disaster support</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> Farmers affected by floods/drought
+              in TN
+            </div>
+            <a
+              href="https://www.tnagrisnet.tn.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+
+        <!-- Agriculture Infrastructure Fund -->
+        <div class="scheme-card" data-category="loan">
+          <div
+            class="scheme-card-header"
+            style="background: linear-gradient(135deg, #33691e, #558b2f)"
+          >
+            <i class="fas fa-warehouse scheme-icon"></i>
+            <div class="scheme-badge">Central</div>
+          </div>
+          <div class="scheme-card-body">
+            <h3>Agriculture Infrastructure Fund</h3>
+            <p>
+              Get loans up to ₹2 crore at 3% interest subsidy for post-harvest
+              infrastructure like cold storage and warehouses.
+            </p>
+            <div class="scheme-details">
+              <span><i class="fas fa-rupee-sign"></i> Up to ₹2 Crore</span>
+              <span><i class="fas fa-percent"></i> 3% interest subsidy</span>
+            </div>
+            <div class="scheme-eligibility">
+              <strong>Eligibility:</strong> FPOs, cooperatives, entrepreneurs
+            </div>
+            <a
+              href="https://agriinfra.dac.gov.in/"
+              target="_blank"
+              class="btn scheme-btn"
+              data-key="apply_btn"
+            >
+              <i class="fas fa-external-link-alt"></i> Apply Now
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help Banner -->
+      <div class="scheme-helpline">
+        <i class="fas fa-phone-alt"></i>
+        <div>
+          <strong>Need Help Applying?</strong>
+          <p>
+            Call Kisan Call Center:
+            <a
+              href="tel:1800-180-1551"
+              style="color: #ffd54f; font-weight: bold"
+              >1800-180-1551</a
+            >
+            (Toll Free) | Mon–Sat, 6AM–10PM
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>Your one-stop solution for modern agriculture.</p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/script.js"></script>
+    <script>
+      function filterSchemes(category, btn) {
+        document
+          .querySelectorAll(".scheme-tab")
+          .forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".scheme-card").forEach((card) => {
+          if (category === "all" || card.dataset.category === category) {
+            card.style.display = "flex";
+            card.style.animation = "fadeIn 0.4s ease";
+          } else {
+            card.style.display = "none";
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
+

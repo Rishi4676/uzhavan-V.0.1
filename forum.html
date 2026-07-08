@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_forum">Community Forum - Smart Farmer Assistant</title>
+    <meta
+      name="description"
+      content="Real-time weather forecasts with rain/temperature charts for Indian farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li>
+            <a href="weather.html" data-key="nav_weather">Weather</a>
+          </li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2
+        style="
+          color: var(--primary-green);
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        "
+      >
+        <i class="fas fa-users"></i>
+        <span data-key="nav_forum">Community Forum</span>
+      </h2>
+      <p style="color: #666; margin-bottom: 25px">
+        Ask questions, upload crop photos, share farming methods, and get
+        verified advice from agricultural experts.
+      </p>
+
+      <div
+        class="forum-layout"
+        style="
+          display: grid;
+          grid-template-columns: 1fr 360px;
+          gap: 25px;
+          align-items: start;
+        "
+      >
+        <!-- Left: Forum Posts Stream -->
+        <div>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 15px;
+            "
+          >
+            <h3
+              style="
+                color: #333;
+                font-size: 1.15rem;
+                font-weight: 700;
+                margin: 0;
+              "
+            >
+              Recent Discussions
+            </h3>
+            <div style="display: flex; gap: 10px">
+              <select
+                id="forum-filter"
+                onchange="filterForumPosts()"
+                style="
+                  padding: 6px 12px;
+                  border-radius: 20px;
+                  border: 1.5px solid #ccc;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  outline: none;
+                  background: white;
+                  cursor: pointer;
+                "
+              >
+                <option value="all">All Topics</option>
+                <option value="pest">Pest & Disease</option>
+                <option value="market">Market Price</option>
+                <option value="irrigation">Irrigation</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+          </div>
+
+          <div
+            id="forum-posts-stream"
+            style="display: flex; flex-direction: column; gap: 20px"
+          >
+            <!-- Generated Dynamically -->
+          </div>
+        </div>
+
+        <!-- Right: Post a Question form -->
+        <div
+          style="
+            background: white;
+            border: 1px solid #e8f5e9;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: var(--shadow);
+          "
+        >
+          <h3
+            style="
+              color: var(--primary-green);
+              font-size: 1.15rem;
+              margin-bottom: 15px;
+              border-bottom: 2px solid #e8f5e9;
+              padding-bottom: 10px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <i class="fas fa-pen-fancy"></i> Post a Question
+          </h3>
+
+          <form
+            id="forum-post-form"
+            onsubmit="submitForumPost(event)"
+            style="display: flex; flex-direction: column; gap: 15px"
+          >
+            <div class="form-group" style="margin: 0">
+              <label
+                for="post-author"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 700;
+                  color: #333;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Your Name</label
+              >
+              <input
+                type="text"
+                id="post-author"
+                placeholder="e.g. Ramesh Kumar"
+                style="
+                  padding: 10px;
+                  border: 1.5px solid #ccc;
+                  border-radius: 8px;
+                  font-size: 0.9rem;
+                "
+                required
+              />
+            </div>
+
+            <div class="form-group" style="margin: 0">
+              <label
+                for="post-title"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 700;
+                  color: #333;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Question Title</label
+              >
+              <input
+                type="text"
+                id="post-title"
+                placeholder="e.g. Tomato leaf curling issue"
+                style="
+                  padding: 10px;
+                  border: 1.5px solid #ccc;
+                  border-radius: 8px;
+                  font-size: 0.9rem;
+                "
+                required
+              />
+            </div>
+
+            <div class="form-group" style="margin: 0">
+              <label
+                for="post-category"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 700;
+                  color: #333;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Category</label
+              >
+              <select
+                id="post-category"
+                style="
+                  padding: 10px;
+                  border: 1.5px solid #ccc;
+                  border-radius: 8px;
+                  font-size: 0.9rem;
+                  background: white;
+                "
+                required
+              >
+                <option value="pest">Pest & Disease</option>
+                <option value="market">Market Price</option>
+                <option value="irrigation">Irrigation</option>
+                <option value="general">General Discussion</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin: 0">
+              <label
+                for="post-desc"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 700;
+                  color: #333;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Detailed Description</label
+              >
+              <textarea
+                id="post-desc"
+                rows="4"
+                placeholder="Describe your issue or method..."
+                style="
+                  padding: 10px;
+                  border: 1.5px solid #ccc;
+                  border-radius: 8px;
+                  font-size: 0.9rem;
+                  font-family: inherit;
+                  resize: vertical;
+                "
+                required
+              ></textarea>
+            </div>
+
+            <!-- Photo Upload Area -->
+            <div class="form-group" style="margin: 0">
+              <label
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 700;
+                  color: #333;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Attach Crop Photo (Optional)</label
+              >
+              <div
+                onclick="document.getElementById('forum-file-input').click()"
+                style="
+                  border: 2px dashed #ccc;
+                  border-radius: 8px;
+                  padding: 15px;
+                  text-align: center;
+                  cursor: pointer;
+                  background: #fafafa;
+                  transition: border-color 0.2s;
+                "
+                onmouseover="this.style.borderColor = 'var(--primary-green)'"
+                onmouseout="this.style.borderColor = '#ccc'"
+              >
+                <i
+                  class="fas fa-camera"
+                  style="font-size: 1.5rem; color: #888; margin-bottom: 6px"
+                ></i>
+                <p style="font-size: 0.78rem; color: #666; margin: 0">
+                  Click to upload or capture photo
+                </p>
+                <input
+                  type="file"
+                  id="forum-file-input"
+                  accept="image/*"
+                  style="display: none"
+                  onchange="previewForumImage(event)"
+                />
+              </div>
+              <div
+                id="forum-img-preview-box"
+                style="display: none; margin-top: 10px; position: relative"
+              >
+                <img
+                  id="forum-img-preview"
+                  src="#"
+                  style="
+                    max-width: 100%;
+                    max-height: 120px;
+                    border-radius: 6px;
+                    border: 1px solid #ddd;
+                  "
+                />
+                <button
+                  type="button"
+                  onclick="clearForumImage()"
+                  style="
+                    position: absolute;
+                    top: 5px;
+                    right: 5px;
+                    background: rgba(0, 0, 0, 0.6);
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 22px;
+                    height: 22px;
+                    font-size: 0.75rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                >
+                  ✖
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="btn"
+              style="
+                padding: 12px;
+                border-radius: 8px;
+                font-weight: 700;
+                margin-top: 5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+              "
+            >
+              <i class="fas fa-paper-plane"></i> Publish Question
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>Your one-stop solution for modern agriculture.</p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/script.js"></script>
+    <script type="module" src="js/forum.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="survey_page_title">
+      Land Survey & Patta/Chitta Records - Smart Farmer Assistant
+    </title>
+    <meta
+      name="description"
+      content="Real-time weather forecasts with rain/temperature charts for Indian farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li>
+            <a href="weather.html" data-key="nav_weather">Weather</a>
+          </li>
+          <li>
+            <a href="survey.html" class="active" data-key="nav_survey"
+              >Land Survey</a
+            >
+          </li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2
+        style="
+          color: var(--primary-green);
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        "
+      >
+        <i class="fas fa-file-contract"></i>
+        <span data-key="survey_page_title"
+          >Land Survey & Patta/Chitta Records</span
+        >
+      </h2>
+
+      <!-- Unified Search Form -->
+      <div
+        class="form-container"
+        style="
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          background: white;
+          padding: 20px;
+          border-radius: 12px;
+          border: 1px solid #e8f5e9;
+          box-shadow: var(--shadow);
+          margin-bottom: 25px;
+          align-items: center;
+          justify-content: space-between;
+        "
+      >
+        <div
+          class="form-group"
+          style="position: relative; margin: 0; flex: 2; min-width: 250px"
+        >
+          <input
+            type="text"
+            id="survey-location-input"
+            data-key="weather_placeholder"
+            placeholder="Enter Village/City Name"
+            autocomplete="off"
+            style="
+              width: 100%;
+              border: 1.5px solid #ccc;
+              border-radius: 8px;
+              padding: 12px;
+              font-size: 0.9rem;
+            "
+          />
+          <div
+            id="survey-suggestions"
+            class="suggestions-dropdown"
+            style="
+              display: none;
+              position: absolute;
+              top: 100%;
+              left: 0;
+              right: 0;
+              background: white;
+              border: 1px solid #ccc;
+              max-height: 200px;
+              overflow-y: auto;
+              z-index: 1000;
+              border-radius: 0 0 8px 8px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            "
+          ></div>
+        </div>
+        <div class="form-group" style="margin: 0; flex: 1; min-width: 180px">
+          <input
+            type="text"
+            id="survey-number-input"
+            data-key="survey_num_placeholder"
+            placeholder="Survey No. (e.g. 124/2B)"
+            style="
+              width: 100%;
+              border: 1.5px solid #ccc;
+              border-radius: 8px;
+              padding: 12px;
+              font-size: 0.9rem;
+            "
+          />
+        </div>
+        <button
+          class="btn"
+          onclick="searchLandRecords()"
+          data-key="btn_search_survey"
+          style="
+            margin: 0;
+            padding: 12px 25px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+            white-space: nowrap;
+            height: 45px;
+          "
+        >
+          <i class="fas fa-search"></i> Search Records
+        </button>
+      </div>
+
+      <!-- Cadastral Interactive Map Section -->
+      <div
+        class="mapping-container-grid"
+        style="
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 20px;
+          margin-bottom: 25px;
+        "
+      >
+        <div>
+          <div
+            class="map-controls-toolbar"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              background: white;
+              padding: 12px 18px;
+              border-radius: 10px 10px 0 0;
+              border: 1px solid #e8f5e9;
+              border-bottom: none;
+              flex-wrap: wrap;
+              gap: 10px;
+            "
+          >
+            <div
+              style="
+                font-weight: 700;
+                color: #333;
+                font-size: 0.95rem;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              "
+            >
+              <i
+                class="fas fa-map-marked-alt"
+                style="color: var(--secondary-green)"
+              ></i>
+              <span data-key="map_section_title"
+                >Interactive Cadastral Map & Water Highlights</span
+              >
+            </div>
+            <button
+              id="survey-satellite-toggle"
+              class="lang-switch-btn"
+              style="
+                background: var(--primary-green);
+                color: white;
+                padding: 8px 18px;
+                border-radius: 20px;
+                margin: 0;
+                font-weight: 600;
+              "
+            >
+              Satellite View
+            </button>
+          </div>
+          <div
+            id="survey-map"
+            style="
+              height: 480px;
+              border-radius: 0 0 10px 10px;
+              box-shadow: var(--shadow);
+              position: relative;
+              z-index: 1;
+              border: 1px solid #e8f5e9;
+            "
+          ></div>
+        </div>
+      </div>
+
+      <!-- Government Land Registry & Survey Records Panel -->
+      <div
+        id="survey-records-section"
+        style="display: none; margin-top: 30px; margin-bottom: 30px"
+      >
+        <div
+          style="
+            background: white;
+            border: 1px solid #e8f5e9;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+          "
+        >
+          <h3
+            style="
+              color: var(--primary-green);
+              margin-bottom: 10px;
+              font-size: 1.3rem;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              border-bottom: 2px solid #e8f5e9;
+              padding-bottom: 10px;
+            "
+          >
+            <i
+              class="fas fa-file-contract"
+              style="color: var(--secondary-green)"
+            ></i>
+            <span data-key="survey_title"
+              >Government Land Registry & Survey Records (Patta/Chitta)</span
+            >
+          </h3>
+          <p
+            style="color: #666; font-size: 0.88rem; margin-bottom: 20px"
+            data-key="survey_desc"
+          >
+            Official cadastral survey records fetched from the state land
+            registry database. Click on any plot on the map to view ownership
+            and valuation details.
+          </p>
+
+          <div
+            class="survey-records-layout"
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+              gap: 24px;
+              align-items: start;
+              margin-bottom: 30px;
+            "
+          >
+            <!-- Near Owners List (Table) -->
+            <div>
+              <h4
+                style="
+                  color: #333;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  font-weight: 700;
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                "
+              >
+                <i class="fas fa-list-ul"></i>
+                <span data-key="plots_in_area">Survey Plots in this Area</span>
+              </h4>
+              <div
+                style="
+                  overflow-x: auto;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                "
+              >
+                <table
+                  style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.85rem;
+                    text-align: left;
+                  "
+                >
+                  <thead>
+                    <tr
+                      style="
+                        background: #f9fbf8;
+                        border-bottom: 1.5px solid #e8f5e9;
+                      "
+                    >
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_survey_no"
+                      >
+                        Survey / Sub-div
+                      </th>
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_patta_no"
+                      >
+                        Patta No
+                      </th>
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_owner"
+                      >
+                        Pattadhar Name
+                      </th>
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_classification"
+                      >
+                        Land Class
+                      </th>
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_area"
+                      >
+                        Area (Hec-Ares)
+                      </th>
+                      <th
+                        style="
+                          padding: 12px 10px;
+                          color: #4caf50;
+                          font-weight: 700;
+                        "
+                        data-key="th_tax"
+                      >
+                        Tax (Tirvai)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="survey-records-table-body">
+                    <!-- Loaded dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Selected Plot Details -->
+            <div
+              id="selected-plot-card"
+              style="
+                background: #f9fbf8;
+                border: 1px dashed var(--secondary-green);
+                border-radius: 10px;
+                padding: 20px;
+                min-height: 250px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                color: #666;
+              "
+            >
+              <i
+                class="fas fa-map-marked-alt"
+                style="font-size: 3rem; color: #ccc; margin-bottom: 15px"
+              ></i>
+              <p
+                style="font-size: 0.9rem; font-weight: 600"
+                data-key="select_plot_instructions"
+              >
+                Select a survey plot on the map to view detailed Patta records
+                and land valuation.
+              </p>
+            </div>
+          </div>
+
+          <!-- Unique Visualizations Section -->
+          <h4
+            style="
+              color: #333;
+              margin-bottom: 15px;
+              font-size: 1rem;
+              font-weight: 700;
+              border-top: 1px solid #f0f0f0;
+              padding-top: 25px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <i class="fas fa-chart-pie" style="color: var(--primary-green)"></i>
+            <span data-key="analytics_title"
+              >Land Analytics & Valuation Insights</span
+            >
+          </h4>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+              gap: 24px;
+            "
+          >
+            <!-- Doughnut Chart: Classification Share -->
+            <div
+              style="
+                background: #f9fbf8;
+                border: 1px solid #e8f5e9;
+                border-radius: 10px;
+                padding: 20px;
+                text-align: center;
+              "
+            >
+              <h5
+                style="
+                  color: #555;
+                  font-size: 0.88rem;
+                  font-weight: 700;
+                  margin-bottom: 15px;
+                "
+                data-key="chart_class_title"
+              >
+                Land Classification Breakdown (Acres)
+              </h5>
+              <div style="height: 200px; position: relative">
+                <canvas id="landClassChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Line Chart: Valuation Trends -->
+            <div
+              style="
+                background: #f9fbf8;
+                border: 1px solid #e8f5e9;
+                border-radius: 10px;
+                padding: 20px;
+                text-align: center;
+              "
+            >
+              <h5
+                style="
+                  color: #555;
+                  font-size: 0.88rem;
+                  font-weight: 700;
+                  margin-bottom: 15px;
+                "
+                data-key="chart_value_title"
+              >
+                Land Valuation Trend (Average ₹ Lakhs / Acre)
+              </h5>
+              <div style="height: 200px; position: relative">
+                <canvas id="landValueTrendChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>Your one-stop solution for modern agriculture.</p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/script.js"></script>
+    <script type="module" src="js/survey.js"></script>
+  </body>
+</html>
+

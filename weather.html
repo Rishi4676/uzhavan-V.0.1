@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_weather">
+      Weather Forecast - Smart Farmer Assistant
+    </title>
+    <meta
+      name="description"
+      content="Real-time weather forecasts with rain/temperature charts for Indian farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li>
+            <a href="weather.html" class="active" data-key="nav_weather"
+              >Weather</a
+            >
+          </li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2
+        style="
+          color: var(--primary-green);
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        "
+      >
+        <i class="fas fa-cloud-sun"></i>
+        <span data-key="weather_title">Check Today's Weather</span>
+      </h2>
+      <div class="form-container">
+        <div class="form-group" style="position: relative">
+          <input
+            type="text"
+            id="location-input"
+            data-key="weather_placeholder"
+            placeholder="Enter Village/City Name"
+            autocomplete="off"
+          />
+          <div id="suggestions" class="suggestions-dropdown"></div>
+        </div>
+        <button class="btn" onclick="getWeather()" data-key="btn_get_weather">
+          Get Weather
+        </button>
+      </div>
+
+      <div id="weather-result" class="weather-result">
+        <p>Enter location or click on the map to see the weather forecast.</p>
+      </div>
+
+      <!-- Weather Charts Section -->
+      <div id="weather-charts-section" style="display: none; margin-top: 30px">
+        <h3
+          style="
+            color: var(--primary-green);
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          "
+        >
+          <i class="fas fa-chart-bar"></i> 7-Day Weather Visualization
+        </h3>
+        <div class="weather-charts-grid">
+          <!-- Rain Chart -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <i class="fas fa-cloud-rain" style="color: #0288d1"></i>
+              <h4>Rainfall Forecast (mm)</h4>
+            </div>
+            <div class="chart-container">
+              <canvas id="rainChart"></canvas>
+            </div>
+            <p class="chart-note">
+              💧 Ideal rainfall for most crops: 4–10 mm/day
+            </p>
+          </div>
+          <!-- Temperature Chart -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <i class="fas fa-temperature-high" style="color: #d32f2f"></i>
+              <h4>Temperature Trend (°C)</h4>
+            </div>
+            <div class="chart-container">
+              <canvas id="tempChart"></canvas>
+            </div>
+            <p class="chart-note">🌡️ Optimal crop growth: 20–32°C</p>
+          </div>
+        </div>
+
+        <!-- Farming Advisory Banner -->
+        <div id="farming-advisory" class="farming-advisory-box"></div>
+      </div>
+
+      <!-- GPS Farm Mapping Section -->
+      <div
+        style="
+          margin-top: 40px;
+          border-top: 2px solid #e8f5e9;
+          padding-top: 30px;
+        "
+      >
+        <h3
+          style="
+            color: var(--primary-green);
+            margin-bottom: 10px;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          "
+        >
+          <i class="fas fa-map-marked-alt"></i> GPS Farm Mapping & Area
+          Measurement
+        </h3>
+        <p style="color: #666; font-size: 0.9rem; margin-bottom: 20px">
+          Measure your crop lands, trace farm boundaries, and save field
+          locations for tracking crop performance.
+        </p>
+
+        <!-- Two Column Layout for Map & Mapping Dashboard -->
+        <div
+          class="mapping-container-grid"
+          style="
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            margin-bottom: 20px;
+          "
+        >
+          <!-- Map Column -->
+          <div>
+            <div
+              class="map-controls-toolbar"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: white;
+                padding: 12px 18px;
+                border-radius: 10px 10px 0 0;
+                border: 1px solid #e8f5e9;
+                border-bottom: none;
+                flex-wrap: wrap;
+                gap: 10px;
+              "
+            >
+              <div style="display: flex; gap: 10px; flex-wrap: wrap">
+                <button
+                  id="draw-mode-btn"
+                  class="btn"
+                  style="
+                    width: auto;
+                    margin: 0;
+                    padding: 8px 18px;
+                    font-size: 0.85rem;
+                    background: var(--secondary-green);
+                    border-radius: 20px;
+                  "
+                  onclick="toggleDrawMode()"
+                >
+                  <i class="fas fa-draw-polygon"></i> Start Farm Mapping
+                </button>
+                <button
+                  id="clear-points-btn"
+                  class="btn"
+                  style="
+                    width: auto;
+                    margin: 0;
+                    padding: 8px 18px;
+                    font-size: 0.85rem;
+                    background: #e53935;
+                    border-radius: 20px;
+                    display: none;
+                  "
+                  onclick="clearCurrentMapping()"
+                >
+                  <i class="fas fa-trash-alt"></i> Clear Boundary
+                </button>
+              </div>
+
+              <button
+                id="satellite-toggle"
+                class="lang-switch-btn"
+                style="
+                  background: var(--primary-green);
+                  color: white;
+                  padding: 8px 18px;
+                  border-radius: 20px;
+                  margin: 0;
+                "
+              >
+                Satellite View
+              </button>
+            </div>
+
+            <div
+              id="map"
+              style="
+                height: 480px;
+                border-radius: 0 0 10px 10px;
+                box-shadow: var(--shadow);
+                position: relative;
+                z-index: 1;
+                border: 1px solid #e8f5e9;
+              "
+            ></div>
+          </div>
+
+          <!-- Mapping Sidebar Column -->
+          <div style="display: flex; flex-direction: column; gap: 20px">
+            <!-- Measurements Panel -->
+            <div
+              style="
+                background: white;
+                border: 1px solid #e8f5e9;
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: var(--shadow);
+              "
+            >
+              <h4
+                style="
+                  color: var(--primary-green);
+                  font-size: 1rem;
+                  margin-bottom: 15px;
+                  border-bottom: 2px solid #e8f5e9;
+                  padding-bottom: 8px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <i class="fas fa-calculator"></i> Land Measurement
+              </h4>
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <span style="color: #666">Points Marked:</span>
+                  <strong
+                    id="vertices-count"
+                    style="font-size: 1rem; color: #333"
+                    >0</strong
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <span style="color: #666">Total Area:</span>
+                  <strong
+                    id="measurement-area-sqm"
+                    style="font-size: 1rem; color: #333"
+                    >0 sq.m</strong
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.9rem;
+                    border-top: 1px dashed #e8f5e9;
+                    padding-top: 10px;
+                  "
+                >
+                  <span style="color: #666; font-weight: 600">Acres:</span>
+                  <strong
+                    id="measurement-area-acres"
+                    style="
+                      color: var(--primary-green);
+                      font-size: 1.15rem;
+                      font-weight: 800;
+                    "
+                    >0.00 Acres</strong
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <span style="color: #666">Hectares:</span>
+                  <strong
+                    id="measurement-area-hectares"
+                    style="font-size: 1.05rem; color: #333; font-weight: 600"
+                    >0.00 ha</strong
+                  >
+                </div>
+              </div>
+
+              <!-- Save Field Form Box -->
+              <div
+                id="save-field-box"
+                style="
+                  margin-top: 20px;
+                  display: none;
+                  border-top: 1px solid #e8f5e9;
+                  padding-top: 15px;
+                "
+              >
+                <div class="form-group" style="margin-bottom: 12px">
+                  <label
+                    for="field-name-input"
+                    style="
+                      font-size: 0.8rem;
+                      font-weight: 700;
+                      color: #333;
+                      display: block;
+                      margin-bottom: 5px;
+                    "
+                    >Field Name</label
+                  >
+                  <input
+                    type="text"
+                    id="field-name-input"
+                    placeholder="e.g. Rice Paddy Field North"
+                    style="
+                      padding: 10px;
+                      border: 1.5px solid #ccc;
+                      border-radius: 8px;
+                      font-size: 0.9rem;
+                    "
+                    required
+                  />
+                </div>
+                <div class="form-group" style="margin-bottom: 15px">
+                  <label
+                    for="field-crop-input"
+                    style="
+                      font-size: 0.8rem;
+                      font-weight: 700;
+                      color: #333;
+                      display: block;
+                      margin-bottom: 5px;
+                    "
+                    >Current Crop</label
+                  >
+                  <input
+                    type="text"
+                    id="field-crop-input"
+                    placeholder="e.g. Paddy / Cotton"
+                    style="
+                      padding: 10px;
+                      border: 1.5px solid #ccc;
+                      border-radius: 8px;
+                      font-size: 0.9rem;
+                    "
+                    required
+                  />
+                </div>
+                <button
+                  class="btn"
+                  style="padding: 10px; font-size: 0.9rem; border-radius: 8px"
+                  onclick="saveCurrentField()"
+                >
+                  <i class="fas fa-save"></i> Save Field Location
+                </button>
+              </div>
+            </div>
+
+            <!-- Saved Fields List -->
+            <div
+              style="
+                background: white;
+                border: 1px solid #e8f5e9;
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: var(--shadow);
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+              "
+            >
+              <h4
+                style="
+                  color: var(--primary-green);
+                  font-size: 1rem;
+                  margin-bottom: 15px;
+                  border-bottom: 2px solid #e8f5e9;
+                  padding-bottom: 8px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                "
+              >
+                <i class="fas fa-layer-group"></i> Saved Fields (<span
+                  id="saved-fields-count"
+                  >0</span
+                >)
+              </h4>
+              <div
+                id="saved-fields-list"
+                style="
+                  overflow-y: auto;
+                  max-height: 250px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 10px;
+                  flex-grow: 1;
+                "
+              >
+                <!-- Populate dynamically -->
+                <div
+                  style="
+                    text-align: center;
+                    color: #888;
+                    font-size: 0.85rem;
+                    padding: 30px 10px;
+                    font-style: italic;
+                  "
+                >
+                  No fields mapped yet. Start mapping above!
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>Your one-stop solution for modern agriculture.</p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/script.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="title">Smart Farmer Assistant</title>
+    <meta
+      name="description"
+      content="Smart Farmer Assistant - Real-time weather, market prices, pest detection, and government schemes for farmers."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li>
+            <a href="index.html" class="active" data-key="nav_home">Home</a>
+          </li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <section class="banner">
+      
+      <div class="banner-content">
+        <h2 data-key="banner_title">Empowering Farmers for a Better Tomorrow</h2>
+        <p data-key="banner_subtitle">
+          Get weather, market prices, and expert advice in one place.
+        </p>
+      </div>
+    </section>
+
+    <div class="container index-container">
+      <!-- Feature Grid -->
+      <div class="feature-grid">
+        <a href="weather.html" class="feature-card">
+          <i class="fas fa-cloud-sun"></i>
+          <h3 data-key="quick_weather">Weather Forecast</h3>
+        </a>
+        <a href="market.html" class="feature-card">
+          <i class="fas fa-chart-line"></i>
+          <h3 data-key="quick_market">Market Prices</h3>
+        </a>
+        <a href="pest.html" class="feature-card">
+          <i class="fas fa-bug"></i>
+          <h3 data-key="quick_pest">Pest &amp; Disease</h3>
+        </a>
+        <a href="schemes.html" class="feature-card">
+          <i class="fas fa-hand-holding-heart"></i>
+          <h3 data-key="quick_schemes">Govt Schemes</h3>
+        </a>
+        <a href="contact.html" class="feature-card">
+          <i class="fas fa-headset"></i>
+          <h3 data-key="quick_contact">Help Center</h3>
+        </a>
+      </div>
+
+      <hr style="margin: 50px 0; border: 0; border-top: 1px solid #ddd" />
+
+      <!-- DAILY REPORTS SECTION -->
+      <section id="daily-reports-section" style="margin-bottom: 50px">
+        <div class="news-header">
+          <h2 class="news-main-title">
+            <i class="fas fa-file-invoice-dollar" style="color: #2e7d32"></i>
+            <span data-key="daily_reports_title"
+              >Daily Market & Advisory Dashboard</span
+            >
+          </h2>
+          <p class="news-subtitle" data-key="daily_reports_subtitle">
+            Live commodity price movements, farming alerts, and tailored daily
+            guides.
+          </p>
+        </div>
+
+        <div class="reports-grid">
+          <!-- Card 1: Today's Market Pulse -->
+          <div class="report-card widget-market-pulse">
+            <div class="widget-header">
+              <h3 data-key="market_pulse_title">Today's Market Pulse</h3>
+              <span class="sentiment-badge bullish" id="market-sentiment-badge"
+                >BULLISH</span
+              >
+            </div>
+            <div class="ticker-wrapper">
+              <div id="market-pulse-list" class="market-pulse-list">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+            <div class="widget-footer">
+              <span id="market-update-time"
+                ><i class="far fa-clock"></i> Updated today, 09:30 AM</span
+              >
+              <a
+                href="market.html"
+                style="
+                  color: #2e7d32;
+                  font-weight: 700;
+                  text-decoration: none;
+                  font-size: 0.85rem;
+                  display: flex;
+                  align-items: center;
+                  gap: 4px;
+                "
+              >
+                View All
+                <i class="fas fa-arrow-right" style="font-size: 0.75rem"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Card 2: Daily Crop Advisories -->
+          <div class="report-card widget-crop-advisory">
+            <div class="widget-header">
+              <h3 data-key="crop_advisories_title">Daily Crop Advisories</h3>
+            </div>
+            <div class="advisory-controls">
+              <label for="advisory-crop-select" data-key="choose_crop"
+                >Choose Crop:</label
+              >
+              <select
+                id="advisory-crop-select"
+                onchange="updateDailyAdvisory()"
+              >
+                <option value="paddy">Paddy (Rice)</option>
+                <option value="cotton">Cotton</option>
+                <option value="tomato">Tomato</option>
+                <option value="sugarcane">Sugarcane</option>
+              </select>
+            </div>
+            <div id="advisory-display" class="advisory-display">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- Card 3: Weather Warnings & PDF Download -->
+          <div class="report-card widget-alerts">
+            <div class="widget-header">
+              <h3 data-key="alerts_actions_title">Alerts & Actions</h3>
+            </div>
+            <div class="alerts-list" id="alerts-list-container">
+              <!-- Loaded dynamically -->
+            </div>
+            <button
+              class="download-report-btn"
+              onclick="generateDailyReportPDF()"
+            >
+              <i class="fas fa-file-pdf"></i>
+              <span data-key="download_report_btn"
+                >Download Daily PDF Report</span
+              >
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <hr style="margin: 50px 0; border: 0; border-top: 1px solid #ddd" />
+
+      <!-- LIVE NEWS SECTION -->
+      <section id="live-news-section" style="margin-bottom: 50px">
+        <div class="news-header">
+          <h2 class="news-main-title">
+            <span class="live-dot-pulse"></span>
+            <i class="fas fa-satellite-dish" style="color: #d32f2f"></i> Live
+            Agriculture Pulse
+          </h2>
+          <p class="news-subtitle">
+            Real-time global and local agriculture headlines
+          </p>
+        </div>
+
+        <!-- News Quote Flash -->
+        <div id="news-flash-card">
+          <i class="fas fa-quote-left news-quote-icon"></i>
+          <div id="live-news-quote">Connecting to live news satellites...</div>
+          <div class="news-meta">
+            <span id="news-source-tag" class="news-tag">LATEST UPDATE</span>
+            <span id="live-clock" class="live-clock">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- News Filter Tabs -->
+        <div class="news-filter-tabs">
+          <button class="news-tab active" onclick="filterNews('all', this)">
+            All
+          </button>
+          <button class="news-tab" onclick="filterNews('GOVT', this)">
+            Government
+          </button>
+          <button class="news-tab" onclick="filterNews('LIVE', this)">
+            Live Feed
+          </button>
+          <button class="news-tab" onclick="filterNews('TRENDING', this)">
+            Trending
+          </button>
+        </div>
+
+        <!-- Real-time Agri News Feed -->
+        <div class="news-feed-wrapper">
+          <h3 class="news-feed-title">
+            <i class="fas fa-newspaper" style="color: #2e7d32"></i> Real-time
+            Agriculture News
+          </h3>
+          <div id="news-feed" class="news-grid">
+            <div
+              class="spinner"
+              style="
+                margin: 20px auto;
+                grid-column: 1 / -1;
+                width: 30px;
+                height: 30px;
+              "
+            ></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>
+            Your one-stop solution for modern agriculture. Providing real-time
+            insights, expert advice, and government support for every farmer.
+          </p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/script.js"></script>
+  </body>
+</html>
+

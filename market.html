@@ -1,0 +1,1832 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_market">Market Prices</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li>
+            <a href="market.html" class="active" data-key="nav_market"
+              >Market</a
+            >
+          </li>
+          <li><a href="crop.html" data-key="nav_crop">Crop Suggestion</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <!-- AI Insights Panel -->
+      <div
+        id="ai-insights-panel"
+        style="
+          background: linear-gradient(135deg, #1b5e20, #2e7d32);
+          color: white;
+          padding: 25px;
+          border-radius: 20px;
+          margin-bottom: 30px;
+          box-shadow: 0 10px 25px rgba(27, 94, 32, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 20px;
+        "
+      >
+        <div style="flex: 2; min-width: 300px">
+          <h3
+            style="
+              color: #ffd54f;
+              margin-bottom: 10px;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            "
+          >
+            <i class="fas fa-robot"></i> AI Market Predictor
+          </h3>
+          <p
+            id="sentiment-detail"
+            style="font-size: 1.1rem; line-height: 1.5; opacity: 0.95"
+          >
+            Analyzing real-time market trends to provide you with the best
+            insights...
+          </p>
+        </div>
+        <div
+          style="
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          "
+        >
+          <h4
+            style="
+              margin-bottom: 15px;
+              font-size: 0.9rem;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            "
+          >
+            Recommended Crops
+          </h4>
+          <ul
+            id="ai-recommendations-list"
+            style="
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+            "
+          >
+            <li style="display: flex; align-items: center; gap: 8px">
+              <i class="fas fa-spinner fa-spin"></i> Loading AI picks...
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <div class="market-tabs-container">
+        <button
+          class="market-tab-btn active"
+          onclick="switchMarketTab('prices')"
+          id="tab-btn-prices"
+        >
+          <i class="fas fa-chart-line"></i> Market Prices
+        </button>
+        <button
+          class="market-tab-btn"
+          onclick="switchMarketTab('tracker')"
+          id="tab-btn-tracker"
+        >
+          <i class="fas fa-wallet"></i> Expense & Profit Tracker
+        </button>
+        <button
+          class="market-tab-btn"
+          onclick="switchMarketTab('marketplace')"
+          id="tab-btn-marketplace"
+        >
+          <i class="fas fa-store"></i> Buy & Sell Marketplace
+        </button>
+      </div>
+
+      <!-- TAB 1: MARKET PRICES -->
+      <div id="prices-tab-content" class="tab-content active">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+          "
+        >
+          <div>
+            <h2 data-key="market_title" style="margin-bottom: 5px">
+              Market Intelligence Dashboard
+            </h2>
+            <p style="color: #666; font-size: 0.9rem">
+              Real-time analysis of
+              <span
+                id="total-crops-count"
+                style="font-weight: bold; color: #2e7d32"
+                >...</span
+              >
+              commodities,
+              <span
+                id="total-markets-count"
+                style="font-weight: bold; color: #2e7d32"
+                >...</span
+              >
+              markets across
+              <span
+                id="total-districts-count"
+                style="font-weight: bold; color: #2e7d32"
+                >...</span
+              >
+              districts in Tamil Nadu
+            </p>
+          </div>
+          <div
+            id="live-indicator"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              background: #e8f5e9;
+              padding: 8px 16px;
+              border-radius: 30px;
+              border: 1px solid #c8e6c9;
+              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            "
+          >
+            <span class="pulse-dot"></span>
+            <span
+              style="
+                font-weight: bold;
+                color: #2e7d32;
+                font-size: 0.9rem;
+                letter-spacing: 1px;
+              "
+              >LIVE MARKET</span
+            >
+            <span
+              id="last-updated-time"
+              style="
+                font-size: 0.8rem;
+                color: #666;
+                margin-left: 8px;
+                border-left: 1px solid #ccc;
+                padding-left: 8px;
+              "
+              >Syncing...</span
+            >
+          </div>
+        </div>
+
+        <!-- Market Insights Cards -->
+        <div
+          class="feature-grid"
+          style="
+            margin-top: 0;
+            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          "
+        >
+          <!-- 1. Highest Price Today -->
+          <div class="insight-card">
+            <i class="fas fa-arrow-up" style="color: #2e7d32"></i>
+            <div class="insight-content">
+              <h4>Highest Price Today</h4>
+              <p id="top-crop-val">₹0</p>
+              <small id="top-crop-name">Loading...</small>
+            </div>
+          </div>
+          <!-- 2. Lowest Price Today -->
+          <div class="insight-card">
+            <i class="fas fa-arrow-down" style="color: #c62828"></i>
+            <div class="insight-content">
+              <h4>Lowest Price Today</h4>
+              <p id="lowest-crop-val">₹0</p>
+              <small id="lowest-crop-name">Loading...</small>
+            </div>
+          </div>
+          <!-- 3. Average Price -->
+          <div class="insight-card">
+            <i class="fas fa-balance-scale"></i>
+            <div class="insight-content">
+              <h4>Average Price</h4>
+              <p id="avg-price-val">₹0</p>
+              <small>State-wide average</small>
+            </div>
+          </div>
+          <!-- 4. Most Expensive Commodity -->
+          <div class="insight-card">
+            <i class="fas fa-gem" style="color: #ab47bc"></i>
+            <div class="insight-content">
+              <h4>Most Expensive Commodity</h4>
+              <p id="expensive-crop-val">-</p>
+              <small id="expensive-crop-name">-</small>
+            </div>
+          </div>
+          <!-- 5. Most Affordable Commodity -->
+          <div class="insight-card">
+            <i class="fas fa-leaf" style="color: #66bb6a"></i>
+            <div class="insight-content">
+              <h4>Most Affordable Commodity</h4>
+              <p id="affordable-crop-val">-</p>
+              <small id="affordable-crop-name">-</small>
+            </div>
+          </div>
+          <!-- 6. Highest Arrival -->
+          <div class="insight-card">
+            <i class="fas fa-truck-loading" style="color: #ffa726"></i>
+            <div class="insight-content">
+              <h4>Highest Arrival Quantity</h4>
+              <p id="highest-arrival-val">0 qtl</p>
+              <small id="highest-arrival-details">Loading...</small>
+            </div>
+          </div>
+          <!-- 7. Most Active Market -->
+          <div class="insight-card">
+            <i class="fas fa-store-alt" style="color: #29b6f6"></i>
+            <div class="insight-content">
+              <h4>Most Active Market</h4>
+              <p id="active-market-val">-</p>
+              <small id="active-market-details">Most trades recorded</small>
+            </div>
+          </div>
+          <!-- 8. Price Increase Today -->
+          <div class="insight-card">
+            <i class="fas fa-arrow-circle-up" style="color: #66bb6a"></i>
+            <div class="insight-content">
+              <h4>Crops Price Up</h4>
+              <p id="price-increase-val">0</p>
+              <small>Crops with price increase</small>
+            </div>
+          </div>
+          <!-- 9. Price Decrease Today -->
+          <div class="insight-card">
+            <i class="fas fa-arrow-circle-down" style="color: #ef5350"></i>
+            <div class="insight-content">
+              <h4>Crops Price Down</h4>
+              <p id="price-decrease-val">0</p>
+              <small>Crops with price decrease</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI MARKET PREDICTION SECTION -->
+        <div
+          style="
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 25px;
+          "
+        >
+          <h3
+            style="
+              margin-top: 0;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <i class="fas fa-brain"></i> AI Market Intelligence & Predictive
+            Insights
+          </h3>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 20px;
+              margin-bottom: 25px;
+            "
+          >
+            <div
+              style="
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <small style="opacity: 0.8; font-weight: 600"
+                >Expected Price Tomorrow</small
+              >
+              <div
+                id="ai-expected-price"
+                style="font-size: 1.5rem; font-weight: 700; margin-top: 5px"
+              >
+                ₹0
+              </div>
+              <span style="font-size: 0.75rem; opacity: 0.8"
+                >Avg based on trend analysis</span
+              >
+            </div>
+
+            <div
+              style="
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <small style="opacity: 0.8; font-weight: 600">Weekly Trend</small>
+              <div
+                id="ai-weekly-trend"
+                style="
+                  font-size: 1.3rem;
+                  font-weight: 700;
+                  margin-top: 5px;
+                  color: #a5d6a7;
+                "
+              >
+                <i class="fas fa-chart-line"></i> Moderate Rise
+              </div>
+              <span style="font-size: 0.75rem; opacity: 0.8"
+                >7-day projection</span
+              >
+            </div>
+
+            <div
+              style="
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <small style="opacity: 0.8; font-weight: 600"
+                >Monthly Trend</small
+              >
+              <div
+                id="ai-monthly-trend"
+                style="
+                  font-size: 1.3rem;
+                  font-weight: 700;
+                  margin-top: 5px;
+                  color: #a5d6a7;
+                "
+              >
+                <i class="fas fa-chart-line"></i> Bullish
+              </div>
+              <span style="font-size: 0.75rem; opacity: 0.8"
+                >30-day projection</span
+              >
+            </div>
+
+            <div
+              style="
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <small style="opacity: 0.8; font-weight: 600"
+                >Demand & Supply Prediction</small
+              >
+              <div
+                style="margin-top: 5px; font-weight: bold; font-size: 0.95rem"
+              >
+                Demand: <span id="ai-demand" style="color: #ffd54f">High</span
+                ><br />
+                Supply: <span id="ai-supply" style="color: #ff8a80">Low</span>
+              </div>
+            </div>
+
+            <div
+              style="
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 10px;
+                border: 1.5px solid rgba(255, 255, 255, 0.15);
+              "
+            >
+              <small style="opacity: 0.8; font-weight: 600"
+                >Market Sentiments & Scores</small
+              >
+              <div
+                style="margin-top: 5px; font-weight: bold; font-size: 0.95rem"
+              >
+                Profitability Score:
+                <span id="ai-profitability-score" style="color: #a5d6a7"
+                  >85%</span
+                ><br />
+                Risk Factor Score:
+                <span id="ai-risk-score" style="color: #ff8a80">Low (15%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="
+              background: rgba(0, 0, 0, 0.15);
+              padding: 20px;
+              border-radius: 10px;
+            "
+          >
+            <h4 style="margin-top: 0; margin-bottom: 10px; color: #ffd54f">
+              <i class="fas fa-lightbulb"></i> AI Investment Suggestions &
+              Recommendations
+            </h4>
+            <div
+              id="market-sentiment"
+              style="
+                font-weight: bold;
+                font-size: 1.15rem;
+                margin-bottom: 8px;
+                color: #a5d6a7;
+              "
+            >
+              BULLISH TREND
+            </div>
+            <p
+              id="sentiment-detail"
+              style="
+                margin: 0 0 15px 0;
+                font-size: 0.9rem;
+                line-height: 1.5;
+                opacity: 0.9;
+              "
+            >
+              Analyzing live pricing, volumes, and historical seasonality...
+            </p>
+            <div
+              style="font-size: 0.9rem; font-weight: 600; margin-bottom: 5px"
+            >
+              Recommended Crops to Harvest & Sell:
+            </div>
+            <ul
+              id="ai-recommendations-list"
+              style="
+                margin: 0;
+                padding-left: 20px;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 8px;
+              "
+            >
+              <!-- Recommended Crops list -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- ANALYTICS SECTION -->
+        <div
+          style="
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 25px;
+          "
+        >
+          <h3
+            style="
+              color: #2e7d32;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            "
+          >
+            <i class="fas fa-chart-line"></i> Price Trends & Comparison Analytics
+          </h3>
+          
+          <div
+            style="
+              display: flex;
+              gap: 15px;
+              margin-bottom: 20px;
+              flex-wrap: wrap;
+            "
+          >
+            <div style="flex: 1; min-width: 180px">
+              <label
+                for="chart-commodity-select"
+                style="
+                  font-weight: 600;
+                  font-size: 0.85rem;
+                  color: #555;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Select Commodity</label
+              >
+              <select
+                id="chart-commodity-select"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1.5px solid #ccc;
+                "
+                onchange="updateCharts()"
+              ></select>
+            </div>
+            
+            <div style="flex: 1; min-width: 180px">
+              <label
+                for="chart-market-select"
+                style="
+                  font-weight: 600;
+                  font-size: 0.85rem;
+                  color: #555;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Select Market</label
+              >
+              <select
+                id="chart-market-select"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1.5px solid #ccc;
+                "
+                onchange="updateCharts()"
+              ></select>
+            </div>
+            
+            <div style="flex: 1; min-width: 180px">
+              <label
+                for="chart-period-select"
+                style="
+                  font-weight: 600;
+                  font-size: 0.85rem;
+                  color: #555;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Time Period</label
+              >
+              <select
+                id="chart-period-select"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1.5px solid #ccc;
+                "
+                onchange="updateCharts()"
+              >
+                <option value="daily">Daily Prices</option>
+                <option value="weekly">Weekly Trend</option>
+                <option value="monthly">Monthly Trend</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Selected Commodity & Market Info Grid -->
+          <div id="analytics-details-panel" style="display: none; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f9f9f9; padding: 20px; border-radius: 10px; border: 1px solid #eee;">
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Selected Commodity</small>
+              <div id="analytics-crop-name" style="font-size: 1.25rem; font-weight: 700; color: #2e7d32;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Selected Market</small>
+              <div id="analytics-market-name" style="font-size: 1.25rem; font-weight: 700; color: #333;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Live Price</small>
+              <div id="analytics-live-price" style="font-size: 1.5rem; font-weight: 800; color: #1b5e20;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Min / Max Price</small>
+              <div id="analytics-price-range" style="font-size: 1.1rem; font-weight: 700; color: #555;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Arrival Quantity</small>
+              <div id="analytics-arrival-qty" style="font-size: 1.1rem; font-weight: 700; color: #333;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Last Updated</small>
+              <div id="analytics-market-date" style="font-size: 1rem; font-weight: 700; color: #555;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Price Trend</small>
+              <div id="analytics-price-trend" style="font-size: 1.1rem; font-weight: 700;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Weekly Average</small>
+              <div id="analytics-weekly-avg" style="font-size: 1.1rem; font-weight: 700; color: #1b5e20;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Monthly Average</small>
+              <div id="analytics-monthly-avg" style="font-size: 1.1rem; font-weight: 700; color: #1b5e20;">-</div>
+            </div>
+            <div>
+              <small style="color: #888; font-weight: 600; text-transform: uppercase; font-size: 0.75rem;">Yearly Trend</small>
+              <div id="analytics-yearly-trend" style="font-size: 1.1rem; font-weight: 700; color: #2e7d32;">-</div>
+            </div>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+              gap: 25px;
+            "
+          >
+            <!-- Chart 1: Price History -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Price History
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="priceTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: Arrival Trend -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Arrival Trend
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="arrivalChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 3: Weekly Trend -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Weekly Trend
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="weeklyTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 4: Monthly Trend -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Monthly Trend
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="monthlyTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 5: Commodity Comparison -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Commodity Comparison
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="commodityCompareChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 6: District Comparison -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                District Comparison
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="districtCompareChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 7: Market Comparison -->
+            <div
+              style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 15px;
+                background: #fafafa;
+              "
+            >
+              <h4
+                style="
+                  color: #333;
+                  margin-top: 0;
+                  margin-bottom: 12px;
+                  font-size: 0.95rem;
+                  border-left: 3px solid #2e7d32;
+                  padding-left: 8px;
+                "
+              >
+                Market Comparison
+              </h4>
+              <div style="position: relative; height: 220px; width: 100%">
+                <canvas id="marketCompareChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEARCH AND EXPANDED FILTERS SECTION -->
+        <div
+          class="market-controls"
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+          "
+        >
+          <!-- Search Row -->
+          <div style="display: flex; gap: 15px; width: 100%; flex-wrap: wrap">
+            <div style="flex: 2; min-width: 250px; position: relative">
+              <i
+                class="fas fa-search"
+                style="position: absolute; left: 15px; top: 15px; color: #999"
+              ></i>
+              <input
+                type="text"
+                id="market-search"
+                placeholder="Search by commodity, Tamil/English name, district, market, village..."
+                style="
+                  width: 100%;
+                  padding: 12px 12px 12px 40px;
+                  border: 1px solid #eee;
+                  border-radius: 10px;
+                  background: #f9f9f9;
+                "
+                oninput="filterTable()"
+              />
+            </div>
+
+            <div style="flex: 1; min-width: 150px">
+              <select
+                id="sort-filter"
+                style="
+                  width: 100%;
+                  padding: 12px;
+                  border: 1px solid #eee;
+                  border-radius: 10px;
+                  background: #f9f9f9;
+                  cursor: pointer;
+                "
+                onchange="sortData()"
+              >
+                <option value="none">Sort By: Default</option>
+                <option value="price-high">Highest Price</option>
+                <option value="price-low">Lowest Price</option>
+                <option value="latest-update">Latest Update</option>
+                <option value="district">District</option>
+                <option value="commodity">Commodity</option>
+                <option value="market">Market</option>
+                <option value="trending">Trending</option>
+                <option value="arrival-quantity">Arrival Quantity</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Advanced Filters Collapsible Header -->
+          <button
+            type="button"
+            onclick="toggleAdvancedFilters()"
+            style="
+              background: #f1f8e9;
+              border: none;
+              padding: 10px;
+              border-radius: 8px;
+              color: #2e7d32;
+              font-weight: bold;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              font-size: 0.85rem;
+            "
+          >
+            <i class="fas fa-sliders-h"></i>
+            <span id="advanced-filter-text">Show Advanced Filters</span>
+          </button>
+
+          <!-- Collapsible Advanced Filters Content -->
+          <div
+            id="advanced-filters-panel"
+            style="
+              display: none;
+              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+              gap: 15px;
+              width: 100%;
+              border-top: 1px solid #eee;
+              padding-top: 15px;
+            "
+          >
+            <div>
+              <label
+                for="district-filter"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #666;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >District</label
+              >
+              <select
+                id="district-filter"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                  background: #f9f9f9;
+                "
+                onchange="onDistrictFilterChange()"
+              ></select>
+            </div>
+            <div>
+              <label
+                for="market-filter"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #666;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Market</label
+              >
+              <select
+                id="market-filter"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                  background: #f9f9f9;
+                "
+                onchange="filterTable()"
+              ></select>
+            </div>
+            <div>
+              <label
+                for="category-filter"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #666;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Category</label
+              >
+              <select
+                id="category-filter"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                  background: #f9f9f9;
+                "
+                onchange="filterTable()"
+              ></select>
+            </div>
+            <div>
+              <label
+                for="commodity-filter"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #666;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Commodity</label
+              >
+              <select
+                id="commodity-filter"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                  background: #f9f9f9;
+                "
+                onchange="filterTable()"
+              ></select>
+            </div>
+            <div>
+              <label
+                for="date-filter"
+                style="
+                  font-size: 0.8rem;
+                  font-weight: 600;
+                  color: #666;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >Date</label
+              >
+              <input
+                type="date"
+                id="date-filter"
+                style="
+                  width: 100%;
+                  padding: 8px;
+                  border: 1px solid #eee;
+                  border-radius: 8px;
+                  background: #f9f9f9;
+                "
+                onchange="filterTable()"
+              />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <span style="font-size: 0.8rem; font-weight: 600; color: #666"
+                >Price Range (₹)</span
+              >
+              <div style="display: flex; gap: 5px; align-items: center">
+                <input
+                  type="number"
+                  id="min-price-filter"
+                  placeholder="Min"
+                  style="
+                    width: 50%;
+                    padding: 8px;
+                    border: 1px solid #eee;
+                    border-radius: 8px;
+                    background: #f9f9f9;
+                  "
+                  oninput="filterTable()"
+                />
+                <span style="color: #aaa">-</span>
+                <input
+                  type="number"
+                  id="max-price-filter"
+                  placeholder="Max"
+                  style="
+                    width: 50%;
+                    padding: 8px;
+                    border: 1px solid #eee;
+                    border-radius: 8px;
+                    background: #f9f9f9;
+                  "
+                  oninput="filterTable()"
+                />
+              </div>
+            </div>
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                flex-wrap: wrap;
+              "
+            >
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 5px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  color: #555;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="live-only-filter"
+                  onchange="filterTable()"
+                  style="accent-color: #2e7d32"
+                />
+                Live Only
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 5px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  color: #555;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="trending-filter"
+                  onchange="filterTable()"
+                  style="accent-color: #2e7d32"
+                />
+                Trending
+              </label>
+            </div>
+          </div>
+
+          <!-- Connection Status & Sync Actions -->
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-top: 1px solid #f1f1f1;
+              padding-top: 12px;
+              margin-top: 5px;
+              flex-wrap: wrap;
+              gap: 10px;
+              width: 100%;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                font-size: 0.8rem;
+                color: #666;
+              "
+            >
+              <span
+                >Status:
+                <strong id="connection-status" style="color: #2e7d32"
+                  ><i class="fas fa-check-circle"></i> Connected</strong
+                ></span
+              >
+              <span
+                >Sync Mode:
+                <strong style="color: #2e7d32">Automatic (Hourly)</strong></span
+              >
+            </div>
+            <button
+              class="btn"
+              style="
+                width: auto;
+                margin: 0;
+                padding: 10px 20px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.85rem;
+                font-weight: 600;
+              "
+              onclick="refreshMarketData()"
+            >
+              <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="market-loader"
+          style="display: none; text-align: center; margin-bottom: 20px"
+        >
+          <div class="spinner" style="display: inline-block"></div>
+        </div>
+
+        <div
+          class="table-responsive"
+          style="
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            background: white;
+          "
+        >
+          <table style="border: none; margin-top: 0">
+            <thead style="border-bottom: 2px solid #f1f1f1">
+              <tr>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Crop
+                </th>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Identity
+                </th>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Daily Range
+                </th>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Live Price
+                </th>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Location Details
+                </th>
+                <th style="background: #fff; color: #1b5e20; font-weight: 700">
+                  Arrival
+                </th>
+                <th
+                  style="
+                    background: #fff;
+                    color: #1b5e20;
+                    font-weight: 700;
+                    text-align: center;
+                  "
+                >
+                  Trend
+                </th>
+              </tr>
+            </thead>
+            <tbody id="market-table-body">
+              <!-- Data will be loaded dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: EXPENSE & PROFIT TRACKER -->
+      <div id="tracker-tab-content" class="tab-content">
+        <!-- Visual Dashboard Grid -->
+        <div class="tracker-dashboard-grid">
+          <div class="tracker-card income">
+            <div class="tracker-card-icon">
+              <i class="fas fa-hand-holding-usd"></i>
+            </div>
+            <div class="tracker-card-info">
+              <h4>Total Income</h4>
+              <p id="tracker-total-income">₹0</p>
+            </div>
+          </div>
+          <div class="tracker-card expenses">
+            <div class="tracker-card-icon">
+              <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="tracker-card-info">
+              <h4>Total Expenses</h4>
+              <p id="tracker-total-expenses">₹0</p>
+            </div>
+          </div>
+          <div class="tracker-card net-profit" id="tracker-net-profit-card">
+            <div class="tracker-card-icon"><i class="fas fa-coins"></i></div>
+            <div class="tracker-card-info">
+              <h4>Net Profit</h4>
+              <p id="tracker-net-profit">₹0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Section: Form & Reports -->
+        <div class="tracker-main-layout">
+          <!-- Form Card -->
+          <div class="tracker-form-card">
+            <h3><i class="fas fa-plus-circle"></i> Record Transaction</h3>
+            <form id="tracker-form" onsubmit="saveTrackerRecord(event)">
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="tracker-crop">Crop Name / Category</label>
+                  <input
+                    type="text"
+                    id="tracker-crop"
+                    placeholder="e.g. Rice, Tomato, Cotton"
+                    required
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="tracker-date">Date</label>
+                  <input type="date" id="tracker-date" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="tracker-income">Income (₹)</label>
+                  <input
+                    type="number"
+                    id="tracker-income"
+                    min="0"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="tracker-seed-cost">Seed Cost (₹)</label>
+                  <input
+                    type="number"
+                    id="tracker-seed-cost"
+                    min="0"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="tracker-fertilizer-cost"
+                    >Fertilizer Cost (₹)</label
+                  >
+                  <input
+                    type="number"
+                    id="tracker-fertilizer-cost"
+                    min="0"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="tracker-labor-cost">Labor Cost (₹)</label>
+                  <input
+                    type="number"
+                    id="tracker-labor-cost"
+                    min="0"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="tracker-transport-cost">Transport Cost (₹)</label>
+                  <input
+                    type="number"
+                    id="tracker-transport-cost"
+                    min="0"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div class="form-group flex-1">
+                  <label for="tracker-other-cost">Other Costs (₹)</label>
+                  <input
+                    type="number"
+                    id="tracker-other-cost"
+                    min="0"
+                    placeholder="0"
+                    value="0"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" class="btn" style="margin-top: 15px">
+                <i class="fas fa-save"></i> Save Transaction
+              </button>
+            </form>
+          </div>
+
+          <!-- Reports & History Card -->
+          <div class="tracker-reports-card">
+            <div class="tracker-sub-tabs">
+              <button
+                type="button"
+                class="tracker-sub-tab-btn active"
+                onclick="switchTrackerSubTab('logs')"
+                id="sub-tab-btn-logs"
+              >
+                <i class="fas fa-history"></i> Recent Logs
+              </button>
+              <button
+                type="button"
+                class="tracker-sub-tab-btn"
+                onclick="switchTrackerSubTab('reports')"
+                id="sub-tab-btn-reports"
+              >
+                <i class="fas fa-chart-pie"></i> Monthly Reports
+              </button>
+            </div>
+
+            <!-- Logs Tab Content -->
+            <div
+              id="tracker-logs-container"
+              class="tracker-sub-tab-content active"
+            >
+              <div class="tracker-list-header">
+                <span>Record Details</span>
+                <span>Income / Expense</span>
+              </div>
+              <div id="tracker-records-list" class="tracker-records-scrollable">
+                <!-- Logs populate here -->
+              </div>
+            </div>
+
+            <!-- Reports Tab Content -->
+            <div id="tracker-reports-container" class="tracker-sub-tab-content">
+              <div class="monthly-reports-chart-container">
+                <div id="monthly-reports-list">
+                  <!-- Monthly breakdown goes here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: BUY & SELL MARKETPLACE -->
+      <div id="marketplace-tab-content" class="tab-content">
+        <!-- Marketplace Header & Category Filters -->
+        <div class="marketplace-header-bar">
+          <div class="market-categories-tabs">
+            <button
+              class="market-category-btn active"
+              onclick="filterMarketplaceCategory('all', this)"
+            >
+              <i class="fas fa-th-large"></i> All Items
+            </button>
+            <button
+              class="market-category-btn"
+              onclick="filterMarketplaceCategory('crops', this)"
+            >
+              <i class="fas fa-seedling"></i> Crops
+            </button>
+            <button
+              class="market-category-btn"
+              onclick="filterMarketplaceCategory('seeds', this)"
+            >
+              <i class="fas fa-dot-circle"></i> Seeds
+            </button>
+            <button
+              class="market-category-btn"
+              onclick="filterMarketplaceCategory('fertilizers', this)"
+            >
+              <i class="fas fa-flask"></i> Fertilizers
+            </button>
+            <button
+              class="market-category-btn"
+              onclick="filterMarketplaceCategory('equipment', this)"
+            >
+              <i class="fas fa-tractor"></i> Equipment
+            </button>
+          </div>
+          <button class="btn btn-list-item" onclick="openMarketplaceModal()">
+            <i class="fas fa-plus"></i> List Your Item
+          </button>
+        </div>
+
+        <!-- Marketplace Controls (Search & Sort) -->
+        <div class="marketplace-controls-bar">
+          <div style="flex: 2; min-width: 250px; position: relative">
+            <i
+              class="fas fa-search"
+              style="position: absolute; left: 15px; top: 14px; color: #999"
+            ></i>
+            <input
+              type="text"
+              id="marketplace-search"
+              placeholder="Search for crops, seeds, equipment..."
+              oninput="filterMarketplace()"
+              style="padding-left: 40px"
+            />
+          </div>
+          <select id="marketplace-sort" onchange="sortMarketplace()">
+            <option value="newest">Sort By: Newest</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+          </select>
+        </div>
+
+        <!-- Marketplace Listings Grid -->
+        <div id="marketplace-listings-grid" class="marketplace-grid">
+          <!-- Cards will populate dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>
+            Your one-stop solution for modern agriculture. Providing real-time
+            insights, expert advice, and government support for every farmer.
+          </p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about crops..."
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <!-- MODAL 1: List Item for Sale -->
+    <div id="list-item-modal" class="custom-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>List Item for Sale</h3>
+          <span class="close-btn" onclick="closeMarketplaceModal()"
+            >&times;</span
+          >
+        </div>
+        <form id="marketplace-form" onsubmit="submitMarketplaceItem(event)">
+          <div class="form-group">
+            <label for="item-name">Item Name</label>
+            <input
+              type="text"
+              id="item-name"
+              placeholder="e.g. Fresh Ponni Paddy, Hybrid Cotton Seeds"
+              required
+            />
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1" style="margin-bottom: 1.5rem">
+              <label
+                for="item-category"
+                style="display: block; margin-bottom: 0.5rem; font-weight: 600"
+                >Category</label
+              >
+              <select
+                id="item-category"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1.5px solid #ccc;
+                  border-radius: 8px;
+                  font-size: 1rem;
+                "
+                required
+              >
+                <option value="crops">Crops</option>
+                <option value="seeds">Seeds</option>
+                <option value="fertilizers">Fertilizers</option>
+                <option value="equipment">Equipment</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="item-price">Price (₹)</label>
+              <input
+                type="number"
+                id="item-price"
+                min="0"
+                placeholder="e.g. 50"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="item-unit">Unit</label>
+              <input
+                type="text"
+                id="item-unit"
+                placeholder="e.g. per kg, per bag, per quintal"
+                required
+              />
+            </div>
+            <div class="form-group flex-1">
+              <label for="item-quantity">Available Quantity</label>
+              <input
+                type="text"
+                id="item-quantity"
+                placeholder="e.g. 500 kg, 20 bags"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="item-seller">Your Name</label>
+              <input
+                type="text"
+                id="item-seller"
+                placeholder="e.g. Ramanathan K"
+                required
+              />
+            </div>
+            <div class="form-group flex-1">
+              <label for="item-phone">Phone Number (WhatsApp)</label>
+              <input
+                type="tel"
+                id="item-phone"
+                placeholder="e.g. 9876543210"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="item-district">District / Location</label>
+              <input
+                type="text"
+                id="item-district"
+                placeholder="e.g. Madurai"
+                required
+              />
+            </div>
+            <div class="form-group flex-1">
+              <label for="item-image">Image URL (Optional)</label>
+              <input
+                type="url"
+                id="item-image"
+                placeholder="Leave empty for default category image"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="item-desc">Short Description</label>
+            <textarea
+              id="item-desc"
+              rows="3"
+              placeholder="Describe quality, variety, transport options..."
+              style="
+                width: 100%;
+                padding: 10px;
+                border: 1.5px solid #ccc;
+                border-radius: 8px;
+                font-size: 1rem;
+                resize: vertical;
+              "
+              required
+            ></textarea>
+          </div>
+          <button type="submit" class="btn" style="margin-top: 10px">
+            <i class="fas fa-check-circle"></i> Publish Listing
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 2: Contact Seller -->
+    <div id="contact-seller-modal" class="custom-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="contact-modal-title">Contact Seller</h3>
+          <span class="close-btn" onclick="closeContactModal()">&times;</span>
+        </div>
+        <div
+          class="contact-details-box"
+          style="
+            background: #f9fbf8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-green);
+          "
+        >
+          <div
+            style="font-weight: 700; color: #2e7d32; font-size: 1.1rem"
+            id="contact-product-name"
+          >
+            Product Name
+          </div>
+          <div style="font-size: 0.9rem; color: #555; margin-top: 5px">
+            Seller:
+            <span id="contact-seller-name" style="font-weight: 600"
+              >Seller Name</span
+            >
+          </div>
+          <div style="font-size: 0.9rem; color: #555">
+            Price:
+            <span
+              id="contact-product-price"
+              style="font-weight: 600; color: #1b5e20"
+              >₹0</span
+            >
+          </div>
+          <div style="font-size: 0.9rem; color: #555">
+            Location:
+            <span id="contact-seller-location" style="font-weight: 600"
+              >Location</span
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="contact-message">Your Message</label>
+          <textarea
+            id="contact-message"
+            rows="4"
+            style="
+              width: 100%;
+              padding: 10px;
+              border: 1.5px solid #ccc;
+              border-radius: 8px;
+              font-size: 1rem;
+              resize: vertical;
+            "
+            required
+          ></textarea>
+        </div>
+
+        <div
+          style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap"
+        >
+          <button
+            type="button"
+            class="btn"
+            style="flex: 1; background: #25d366; border: none; min-width: 150px"
+            onclick="openWhatsAppChat()"
+          >
+            <i class="fab fa-whatsapp"></i> Chat on WhatsApp
+          </button>
+          <button
+            type="button"
+            class="btn"
+            style="flex: 1; min-width: 150px"
+            onclick="sendBuiltInMessage()"
+          >
+            <i class="fas fa-paper-plane"></i> Send Inquiry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/script.js"></script>
+    <script type="module" src="js/market.js"></script>
+  </body>
+</html>
+

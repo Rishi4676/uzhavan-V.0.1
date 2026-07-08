@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_crop">Crop Suggestion</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li>
+            <a href="crop.html" class="active" data-key="nav_crop"
+              >Crop Suggestion</a
+            >
+          </li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="login.html" data-key="nav_login">Login</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2 data-key="crop_title">Best Crop for Your Soil</h2>
+      <div
+        class="crop-setup-section"
+        style="
+          background: white;
+          padding: 28px;
+          border-radius: 16px;
+          box-shadow: var(--shadow);
+          border: 1px solid #e8f5e9;
+          margin-bottom: 30px;
+        "
+      >
+        <!-- Hidden input fields to sync with visual cards -->
+        <input type="hidden" id="soil-select" value="clay" />
+        <input type="hidden" id="season-select" value="summer" />
+
+        <!-- 1. Visual Soil/Land Cards Grid -->
+        <h4
+          style="
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          "
+        >
+          <span data-key="soil_type">Select Land / Soil Type</span>
+        </h4>
+        <div class="soil-cards-grid">
+          <!-- Clay Soil Card -->
+          <div class="soil-card active" onclick="selectSoilCard('clay', this)">
+            <div class="soil-card-img-wrap">
+              <img
+                src="https://images.unsplash.com/photo-1581078426770-6d336e5de7bf?w=400&h=250&fit=crop"
+                alt="Clay Soil"
+                class="soil-card-img"
+              />
+            </div>
+            <div class="soil-card-body">
+              <span class="soil-card-title">Clay Soil</span>
+              <span class="soil-card-desc"
+                >Dense mud, low water drainage speed, high nutrient retention
+                capacity. Suitable for paddy fields.</span
+              >
+            </div>
+          </div>
+          <!-- Sandy Soil Card -->
+          <div class="soil-card" onclick="selectSoilCard('sandy', this)">
+            <div class="soil-card-img-wrap">
+              <img
+                src="https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=400&h=250&fit=crop"
+                alt="Sandy Soil"
+                class="soil-card-img"
+              />
+            </div>
+            <div class="soil-card-body">
+              <span class="soil-card-title">Sandy Soil</span>
+              <span class="soil-card-desc"
+                >Granular texture, extremely fast drainage, low nutrients.
+                Excellent for tubers and vine crops.</span
+              >
+            </div>
+          </div>
+          <!-- Loamy Soil Card -->
+          <div class="soil-card" onclick="selectSoilCard('loamy', this)">
+            <div class="soil-card-img-wrap">
+              <img
+                src="https://images.unsplash.com/photo-1464226184884-fa280b87c3a9?w=400&h=250&fit=crop"
+                alt="Loamy Soil"
+                class="soil-card-img"
+              />
+            </div>
+            <div class="soil-card-body">
+              <span class="soil-card-title">Loamy Soil</span>
+              <span class="soil-card-desc"
+                >Fertile humus mix, balanced drainage, rich in soil
+                micro-organisms. Ideal standard for farming.</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Segmented Season Selector & Acreage Row -->
+        <div class="form-row" style="margin-top: 15px">
+          <div class="form-group flex-1" style="margin-bottom: 0">
+            <label
+              style="
+                font-weight: 700;
+                margin-bottom: 8px;
+                font-size: 0.88rem;
+                display: block;
+                color: #333;
+              "
+              ><span data-key="season">Season</span></label
+            >
+            <div class="season-tabs">
+              <button
+                type="button"
+                class="season-tab-btn active"
+                onclick="selectSeasonTab('summer', this)"
+              >
+                <i class="fas fa-sun" style="color: #ff9800"></i> Summer
+              </button>
+              <button
+                type="button"
+                class="season-tab-btn"
+                onclick="selectSeasonTab('monsoon', this)"
+              >
+                <i
+                  class="fas fa-cloud-showers-heavy"
+                  style="color: #2196f3"
+                ></i>
+                Monsoon
+              </button>
+              <button
+                type="button"
+                class="season-tab-btn"
+                onclick="selectSeasonTab('winter', this)"
+              >
+                <i class="fas fa-snowflake" style="color: #00bcd4"></i> Winter
+              </button>
+            </div>
+          </div>
+          <div class="form-group flex-1" style="margin-bottom: 0">
+            <label
+              for="land-size-input"
+              style="
+                font-weight: 700;
+                margin-bottom: 8px;
+                font-size: 0.88rem;
+                display: block;
+                color: #333;
+              "
+              >Land Area (Acres)</label
+            >
+            <input
+              type="number"
+              id="land-size-input"
+              value="1"
+              min="0.1"
+              step="0.1"
+              style="
+                padding: 10px 14px;
+                border: 1.5px solid #ccc;
+                border-radius: 25px;
+                font-size: 1rem;
+                outline: none;
+                width: 100%;
+                height: 48px;
+              "
+              required
+            />
+          </div>
+        </div>
+
+        <button
+          class="btn"
+          style="
+            margin-top: 25px;
+            border-radius: 25px;
+            padding: 12px;
+            font-size: 1.05rem;
+          "
+          onclick="suggestCrops()"
+          data-key="btn_suggest"
+        >
+          <i class="fas fa-magic"></i> Suggest Best Crops
+        </button>
+      </div>
+
+      <!-- 3. Smart Irrigation Scheduler (Unique Feature) -->
+      <div
+        style="
+          background: white;
+          border: 1.5px solid #b2ebf2;
+          border-radius: 12px;
+          padding: 25px;
+          box-shadow: var(--shadow);
+          margin-top: 25px;
+          margin-bottom: 25px;
+        "
+      >
+        <h3
+          style="
+            color: #00838f;
+            margin-bottom: 8px;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          "
+        >
+          <i class="fas fa-tint" style="color: #00bcd4"></i>
+          <span data-key="irrigation_title">Smart Irrigation Scheduler</span>
+        </h3>
+        <p style="color: #666; font-size: 0.88rem; margin-bottom: 20px">
+          Select crop details, growth phase, and weather to calculate optimal
+          water volumes, timing, and drip emitter calibrations.
+        </p>
+
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+          "
+        >
+          <div class="form-group" style="margin: 0">
+            <label
+              style="
+                font-weight: 700;
+                font-size: 0.8rem;
+                color: #333;
+                display: block;
+                margin-bottom: 5px;
+              "
+              >Select Crop</label
+            >
+            <select
+              id="irrig-crop"
+              style="
+                padding: 10px;
+                border: 1.5px solid #ccc;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                background: white;
+                width: 100%;
+              "
+            >
+              <option value="paddy">Paddy (Rice)</option>
+              <option value="cotton">Cotton</option>
+              <option value="tomato">Tomato</option>
+              <option value="wheat">Wheat</option>
+              <option value="maize">Maize</option>
+              <option value="sugarcane">Sugarcane</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0">
+            <label
+              style="
+                font-weight: 700;
+                font-size: 0.8rem;
+                color: #333;
+                display: block;
+                margin-bottom: 5px;
+              "
+              >Soil Type</label
+            >
+            <select
+              id="irrig-soil"
+              style="
+                padding: 10px;
+                border: 1.5px solid #ccc;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                background: white;
+                width: 100%;
+              "
+            >
+              <option value="clay">Clay Soil</option>
+              <option value="sandy">Sandy Soil</option>
+              <option value="loamy">Loamy Soil</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0">
+            <label
+              style="
+                font-weight: 700;
+                font-size: 0.8rem;
+                color: #333;
+                display: block;
+                margin-bottom: 5px;
+              "
+              >Growth Stage</label
+            >
+            <select
+              id="irrig-stage"
+              style="
+                padding: 10px;
+                border: 1.5px solid #ccc;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                background: white;
+                width: 100%;
+              "
+            >
+              <option value="sowing">Sowing / Establishment</option>
+              <option value="vegetative">Vegetative Growth</option>
+              <option value="flowering">Flowering & Fruiting</option>
+              <option value="maturity">Maturity / Harvesting</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0">
+            <label
+              style="
+                font-weight: 700;
+                font-size: 0.8rem;
+                color: #333;
+                display: block;
+                margin-bottom: 5px;
+              "
+              >Current Weather</label
+            >
+            <select
+              id="irrig-weather"
+              style="
+                padding: 10px;
+                border: 1.5px solid #ccc;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                background: white;
+                width: 100%;
+              "
+            >
+              <option value="sunny">Sunny / Dry</option>
+              <option value="cloudy">Cloudy / Humid</option>
+              <option value="rainy">Rain Forecast</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          class="btn"
+          onclick="calculateIrrigationSchedule()"
+          style="
+            background: #00838f;
+            border-color: #00838f;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+          "
+        >
+          <i class="fas fa-calculator"></i> Calculate Watering Schedule
+        </button>
+
+        <div
+          id="irrigation-result-panel"
+          style="
+            display: none;
+            margin-top: 20px;
+            border-top: 1px dashed #b2ebf2;
+            padding-top: 20px;
+          "
+        >
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div id="crop-result"></div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1
+            data-key="title"
+            style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem"
+          >
+            Smart Farmer Assistant
+          </h1>
+          <p>
+            Your one-stop solution for modern agriculture. Providing real-time
+            insights, expert advice, and government support for every farmer.
+          </p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"
+                ><i class="fas fa-university"></i> TNAU</a
+              >
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"
+                ><i class="fas fa-chart-bar"></i> Agmarknet</a
+              >
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"
+                ><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"
+                ><i class="fas fa-globe"></i> TN Agri Dept</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+    <!-- Chatbot Button -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+
+    <!-- Chatbot Box -->
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about crops..."
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+    <script type="module" src="js/script.js"></script>
+  </body>
+</html>
+
