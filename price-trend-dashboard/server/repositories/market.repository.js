@@ -1,7 +1,12 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
+const fs = require("fs");
 
-const dbPath = path.join(__dirname, "../market.db");
+let dbPath = path.join(process.cwd(), "price-trend-dashboard/server/market.db");
+if (!fs.existsSync(dbPath)) {
+  dbPath = path.join(__dirname, "../market.db");
+}
+
 const db = new DatabaseSync(dbPath);
 
 // Initialize database schema
