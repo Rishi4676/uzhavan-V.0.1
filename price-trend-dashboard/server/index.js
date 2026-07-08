@@ -7,6 +7,8 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 require("dotenv").config({ path: path.join(__dirname, "../../.env.local") });
 
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -38,7 +40,7 @@ async function runGeminiPrompt(prompt) {
 }
 
 async function runGroqPrompt(prompt) {
-  if (!process.env.GROQ_API_KEY) {
+  if (!GROQ_API_KEY) {
     throw new Error("Groq API key not found in environment.");
   }
   const response = await axios.post(
@@ -55,7 +57,7 @@ async function runGroqPrompt(prompt) {
     },
     {
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
     },
@@ -211,7 +213,7 @@ function getFreeAssistantReply(message, language) {
 }
 
 function getAiStatus() {
-  const hasGroq = !!process.env.GROQ_API_KEY;
+  const hasGroq = !!GROQ_API_KEY;
   const hasGemini = !!genAI;
   return {
     available: true,
@@ -296,7 +298,7 @@ Example Output:
         let success = false;
 
         // 1. Try Groq
-        if (process.env.GROQ_API_KEY) {
+        if (GROQ_API_KEY) {
           try {
             console.log("Generating AI insights using Groq...");
             rawReply = await runGroqPrompt(prompt);
@@ -389,7 +391,7 @@ app.post("/api/chatbot", async (req, res) => {
 
     // 1. Try Groq
     try {
-      if (process.env.GROQ_API_KEY) {
+      if (GROQ_API_KEY) {
         console.log("Using Groq for chatbot response...");
         const groqReply = await runGroqPrompt(prompt);
         if (groqReply) {
