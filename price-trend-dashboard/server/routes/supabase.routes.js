@@ -150,4 +150,29 @@ router.get('/test-crud', async (req, res) => {
   }
 });
 
+// 3. Register user endpoint (Admin privilege to auto-confirm email)
+router.post('/register', async (req, res) => {
+  const { email, password, metadata } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+
+  try {
+    const { data, error } = await supabaseServer.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: metadata
+    });
+
+    if (error) throw error;
+
+    res.json({ user: data.user });
+  } catch (error) {
+    console.error('Registration failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

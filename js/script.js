@@ -4105,20 +4105,41 @@ window.registerUser = async function(event) {
   const password = document.getElementById('reg-password').value;
   const email = username.includes('@') ? username : `${username}@smartfarmer.com`;
 
+  // Show loading indicator
+  const { showLoader, hideLoader, notify } = await import('../services/supabase.service.js');
+  showLoader();
+
   try {
-    const { authService } = await import('../services/supabase.service.js');
-    const data = await authService.signUp(email, password, {
-      full_name: fullName,
-      username: username,
-      phone_number: phone,
-      village_name: village,
+    const response = await fetch('/api/supabase/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        metadata: {
+          full_name: fullName,
+          username: username,
+          phone_number: phone,
+          village_name: village
+        }
+      })
     });
-    if (data) {
-      setTimeout(() => {
-        window.location.href = 'login.html';
-      }, 2000);
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'An error occurred during registration.');
     }
+
+    notify('Registration successful! Redirecting to login...', 'success');
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 1500);
   } catch (error) {
-    // Handled in authService (shows toast)
+    console.error('Registration failed:', error);
+    notify(`Registration failed: ${error.message}`, 'error');
+  } finally {
+    hideLoader();
   }
 };
