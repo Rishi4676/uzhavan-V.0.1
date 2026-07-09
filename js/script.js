@@ -4124,9 +4124,18 @@ window.registerUser = async function(event) {
     });
 
     if (data) {
-      setTimeout(() => {
-        window.location.href = 'login.html';
-      }, 1500);
+      if (data.session) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        notify('Registration successful! Logging you in...', 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+      } else {
+        notify('Registration successful! Please check your email for the confirmation link.', 'success');
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 3000);
+      }
     }
   } catch (error) {
     console.error('Registration failed:', error);
