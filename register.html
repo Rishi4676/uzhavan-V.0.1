@@ -110,13 +110,30 @@
           </div>
           <div class="form-group">
             <label data-key="ph_password">Password</label>
-            <input
-              type="password"
-              id="reg-password"
-              required
-              data-key="ph_password"
-              placeholder="Password"
-            />
+            <div class="password-container" style="position: relative; display: flex; align-items: center;">
+              <input
+                type="password"
+                id="reg-password"
+                required
+                data-key="ph_password"
+                placeholder="Password"
+                style="width: 100%; padding-right: 40px !important;"
+              />
+              <i class="far fa-eye password-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #888;" onclick="togglePasswordVisibility('reg-password', this)"></i>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <div class="password-container" style="position: relative; display: flex; align-items: center;">
+              <input
+                type="password"
+                id="reg-confirm-password"
+                required
+                placeholder="Confirm Password"
+                style="width: 100%; padding-right: 40px !important;"
+              />
+              <i class="far fa-eye password-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #888;" onclick="togglePasswordVisibility('reg-confirm-password', this)"></i>
+            </div>
           </div>
           <button type="submit" class="btn" data-key="submit_btn">
             Submit
