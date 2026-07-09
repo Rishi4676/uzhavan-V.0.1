@@ -116,10 +116,41 @@
             >
               Recent Discussions
             </h3>
-            <div style="display: flex; gap: 10px">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <!-- Search Input Group -->
+              <div style="display: flex; background: white; border: 1.5px solid #ccc; border-radius: 20px; padding: 2px 12px; align-items: center; gap: 5px;">
+                <select id="forum-search-type" style="border: none; outline: none; font-size: 0.82rem; font-weight: 600; cursor: pointer; background: transparent; padding-right: 5px; border-right: 1px solid #ddd;">
+                  <option value="title">Title</option>
+                  <option value="author">Author</option>
+                </select>
+                <input type="text" id="forum-search" placeholder="Search..." style="border: none; outline: none; padding: 4px; font-size: 0.82rem; width: 120px; background: transparent;" oninput="filterAndSearchForum()" />
+                <i class="fas fa-search" style="color: #888; font-size: 0.82rem;"></i>
+              </div>
+
+              <!-- Sorting Dropdown -->
+              <select
+                id="forum-sort"
+                onchange="filterAndSearchForum()"
+                style="
+                  padding: 6px 12px;
+                  border-radius: 20px;
+                  border: 1.5px solid #ccc;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  outline: none;
+                  background: white;
+                  cursor: pointer;
+                "
+              >
+                <option value="newest">Newest First</option>
+                <option value="upvoted">Most Upvoted</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+
+              <!-- Category Filter Dropdown -->
               <select
                 id="forum-filter"
-                onchange="filterForumPosts()"
+                onchange="filterAndSearchForum()"
                 style="
                   padding: 6px 12px;
                   border-radius: 20px;
