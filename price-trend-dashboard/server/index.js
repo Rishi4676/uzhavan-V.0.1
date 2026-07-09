@@ -264,9 +264,7 @@ function runOllamaPrompt(prompt) {
 const marketRoutes = require("./routes/market.routes");
 app.use("/api", marketRoutes);
 
-// Supabase API Routes
-const supabaseRoutes = require("./routes/supabase.routes");
-app.use("/api/supabase", supabaseRoutes);
+
 
 // AI Market Insights
 app.post("/api/ai-insights", async (req, res) => {

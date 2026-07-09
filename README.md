@@ -1,6 +1,6 @@
 # Smart Farmer Assistant (Uzhavan V.0.1)
 
-A modern, responsive web application designed to support Indian farmers with real-time weather alerts, crop recommendations, pest and disease identification, land surveys, and a community discussion forum.
+A modern, responsive web application designed to support Indian farmers with real-time weather alerts, crop recommendations, pest and disease identification, land surveys, and a local community discussion forum.
 
 ## 🔗 Project Links
 
@@ -11,11 +11,9 @@ A modern, responsive web application designed to support Indian farmers with rea
 
 ## 🚀 Key Features
 
-1. **Community Forum (Supabase Sync):**
-   * Real-time discussions and crop advice.
-   * Auto-detection of logged-in users, complete with location profiles.
-   * Verified TNAU Expert badges for agricultural specialists.
-   * High-performance, offline fallback with local storage.
+1. **Community Forum:**
+   * Discussions and crop advice.
+   * High-performance, offline-first local storage implementation.
 2. **Weather Insights & Charts:**
    * Dynamic rainfall, temperature, and wind graphs.
 3. **Market Place & Price Trends:**
@@ -30,8 +28,7 @@ A modern, responsive web application designed to support Indian farmers with rea
 ## 🛠️ Tech Stack
 
 * **Frontend:** HTML5, CSS3 (Vanilla), ES6 Modules, Vite
-* **Backend:** Node.js, Express
-* **Database & Auth:** Supabase (PostgreSQL)
+* **Backend:** Node.js, Express (API Proxy)
 
 ---
 
@@ -49,17 +46,12 @@ A modern, responsive web application designed to support Indian farmers with rea
    ```
 
 3. **Configure Environment Variables:**
-   Create a `.env.local` file in the root directory and configure your Supabase keys:
+   Create a `.env.local` file in the root directory:
    ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SECRET_KEY=your_supabase_service_role_key
+   GROQ_API_KEY=your_groq_api_key
    ```
 
-4. **Initialize Database Tables:**
-   Copy the SQL scripts inside [lib/supabase/schema.sql](lib/supabase/schema.sql) and execute them in your **Supabase SQL Editor** to create the necessary tables (`profiles`, `forum_posts`, `forum_replies`, and `health_check`).
-
-5. **Start Dev Server:**
+4. **Start Dev Server:**
    ```bash
    npm run dev
    ```

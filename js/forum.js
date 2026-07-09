@@ -1,79 +1,19 @@
 /**
  * Smart Farmer Assistant - Community Forum Interactions
- * Uses modular services (forumService, forumRealtime) to connect with Supabase.
- * Enforces dynamic loading state text, offline connection recovery, and realtime cross-device syncing.
+ * Uses modular local forumService with zero Supabase dependencies.
  */
 
 import { forumService } from './forumService.js';
-import { forumRealtime } from './forumRealtime.js';
-import { forumStorage } from './forumStorage.js';
-import { authService, notify } from '../services/supabase.service.js';
-
-let currentUser = null;
 
 // Initialize Forum
 async function initForum() {
-  // Check online status initially
   if (!navigator.onLine) {
     showOfflineBanner();
   } else {
     hideOfflineBanner();
   }
 
-  renderLoadingSkeleton("Connecting...");
-
-  try {
-    const session = await authService.getSession();
-    if (!session || !session.user) {
-      renderLoginRequired();
-      return;
-    }
-
-    await checkUserSession(session);
-    await loadForumData();
-    
-    // Subscribe to PostgreSQL Realtime events (INSERT, UPDATE, DELETE)
-    forumRealtime.subscribe(
-      (payload) => {
-        console.log('Realtime post change:', payload);
-        loadForumData(false); // Silent reload
-      },
-      (payload) => {
-        console.log('Realtime comment change:', payload);
-        loadForumData(false); // Silent reload
-      }
-    );
-
-  } catch (error) {
-    console.error("Initialization failed:", error);
-    renderErrorState("Failed to connect to authentication server. Please try again.");
-  }
-}
-
-// Check user session
-async function checkUserSession(session) {
-  try {
-    const profile = await authService.getProfile(session.user.id);
-    let displayName = (profile && profile.full_name) || (profile && profile.username) || session.user.email;
-    let village = profile && profile.village_name;
-    
-    if (village) {
-      displayName += ` (Farmer, ${village})`;
-    }
-
-    currentUser = {
-      id: session.user.id,
-      name: displayName,
-      isExpert: session.user.email.endsWith('@tnau.ac.in') || session.user.email.includes('expert')
-    };
-
-    const authorInput = document.getElementById("post-author");
-    if (authorInput) {
-      authorInput.value = (profile && profile.full_name) || (profile && profile.username) || "";
-    }
-  } catch (err) {
-    console.warn("Failed to retrieve user session:", err.message);
-  }
+  await loadForumData();
 }
 
 // Load forum posts and comments
@@ -87,45 +27,13 @@ async function loadForumData(showSkeleton = true) {
     renderForumPosts(processedPosts);
   } catch (error) {
     console.error("Failed to load forum data:", error);
-    renderErrorState(error.message || "An unexpected database connection error occurred.");
+    renderErrorState("An unexpected connection error occurred.");
   }
 }
 
 window.retryLoadData = function () {
   loadForumData(true);
 };
-
-// Render Login Required screen
-function renderLoginRequired() {
-  const stream = document.getElementById("forum-posts-stream");
-  if (!stream) return;
-  
-  stream.innerHTML = `
-    <div style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 50px 30px; text-align: center; color: white; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);">
-      <i class="fas fa-lock" style="font-size: 3.5rem; color: #ffd54f; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 213, 79, 0.3);"></i>
-      <h3 style="font-size: 1.5rem; margin-bottom: 10px; font-weight: 700;">Authentication Required</h3>
-      <p style="color: #ccc; margin-bottom: 25px; max-width: 450px; margin-left: auto; margin-right: auto; line-height: 1.6;">
-        To view discussion threads and participate, please sign in.
-      </p>
-      <a href="login.html" class="btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 30px; border-radius: 30px; font-weight: bold; background: var(--primary-green); color: white; text-decoration: none; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);">
-        <i class="fas fa-sign-in-alt"></i> Login Now
-      </a>
-    </div>
-  `;
-  
-  const formBox = document.getElementById("forum-post-form")?.parentElement;
-  if (formBox) {
-    formBox.innerHTML = `
-      <div style="text-align: center; padding: 20px 10px;">
-        <i class="fas fa-user-shield" style="font-size: 2.5rem; color: #81c784; margin-bottom: 12px;"></i>
-        <h4 style="color: #333; margin-bottom: 6px;">Secure Access</h4>
-        <p style="font-size: 0.82rem; color: #666; margin: 0; line-height: 1.4;">
-          Your posts are completely private and only visible to you.
-        </p>
-      </div>
-    `;
-  }
-}
 
 // Render Loading Skeleton
 function renderLoadingSkeleton(statusText = "Loading Posts...") {
@@ -167,7 +75,7 @@ function renderErrorState(message) {
       <h4 style="margin: 0 0 10px 0; color: #333;">Error Loading Forum</h4>
       <p style="font-size: 0.9rem; color: #666; margin-bottom: 20px;">${message}</p>
       <button onclick="retryLoadData()" class="btn" style="width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 20px; font-weight: 700;">
-        <i class="fas fa-sync-alt"></i> Retry Connection
+        <i class="fas fa-sync-alt"></i> Retry
       </button>
     </div>
   `;
@@ -293,33 +201,18 @@ window.filterAndSearchForum = function () {
   renderForumPosts(processed);
 };
 
-// Increment Upvotes (Optimistic UI)
+// Increment Upvotes
 window.upvotePost = async function (id) {
   try {
-    const post = forumService.posts.find(p => p.id === id);
-    if (post) {
-      post.upvotes++;
-      const processed = forumService.getProcessedPosts();
-      renderForumPosts(processed);
-
-      // Perform background database save
-      await forumService.upvote(id);
-    }
+    await forumService.upvote(id);
+    const processed = forumService.getProcessedPosts();
+    renderForumPosts(processed);
   } catch (err) {
-    console.error("Error upvoting post in Supabase:", err);
-    notify("Failed to register upvote. Try again.", "error");
-    
-    // Rollback
-    const post = forumService.posts.find(p => p.id === id);
-    if (post) {
-      post.upvotes--;
-      const processed = forumService.getProcessedPosts();
-      renderForumPosts(processed);
-    }
+    console.error("Error upvoting post:", err);
   }
 };
 
-// Handle Comment submission (Optimistic UI)
+// Handle Comment submission
 window.submitReply = async function (id) {
   const input = document.getElementById(`reply-input-${id}`);
   if (!input) return;
@@ -330,50 +223,29 @@ window.submitReply = async function (id) {
     return;
   }
 
-  let author = "Farmer Member";
-  if (currentUser) {
-    author = currentUser.name;
-  }
-
-  const tempCommentId = `temp-${Date.now()}`;
-  const optimisticComment = {
-    id: tempCommentId,
-    post_id: id,
-    author: author,
-    comment: forumService.sanitize(text),
-    created_at: new Date().toISOString(),
-    date: forumService.formatDate(new Date())
-  };
+  const author = "Farmer Member";
 
   try {
-    forumService.comments.push(optimisticComment);
+    await forumService.addComment(id, author, text);
     const processed = forumService.getProcessedPosts();
     renderForumPosts(processed);
     input.value = "";
-
-    await forumService.addComment(id, author, text);
     notify("Comment posted!", "success");
   } catch (err) {
     console.error("Error submitting comment:", err);
-    notify("Failed to submit comment. Make sure you are logged in.", "error");
-
-    forumService.comments = forumService.comments.filter(c => c.id !== tempCommentId);
-    const processed = forumService.getProcessedPosts();
-    renderForumPosts(processed);
-    input.value = text;
+    notify("Failed to submit comment.", "error");
   }
 };
 
 // Image Preview for Question Submission
-let selectedFile = null;
+let selectedFileBase64 = null;
 window.previewForumImage = function (event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  selectedFile = file;
-
   const reader = new FileReader();
   reader.onload = function (e) {
+    selectedFileBase64 = e.target.result;
     const previewBox = document.getElementById("forum-img-preview-box");
     const previewImg = document.getElementById("forum-img-preview");
     if (previewImg) previewImg.src = e.target.result;
@@ -383,7 +255,7 @@ window.previewForumImage = function (event) {
 };
 
 window.clearForumImage = function () {
-  selectedFile = null;
+  selectedFileBase64 = null;
   const fileInput = document.getElementById("forum-file-input");
   const previewBox = document.getElementById("forum-img-preview-box");
   if (fileInput) fileInput.value = "";
@@ -409,19 +281,10 @@ window.submitForumPost = async function (event) {
   const submitBtn = event.target.querySelector('button[type="submit"]');
   const origBtnHtml = submitBtn.innerHTML;
   submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
 
   try {
-    let imageUrl = null;
-
-    // Phase 1: Upload Image (displays loading status)
-    if (selectedFile) {
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading Image...';
-      imageUrl = await forumStorage.uploadImage(selectedFile);
-    }
-
-    // Phase 2: Save Post Data (displays loading status)
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-    await forumService.createPost(author, title, desc, category, imageUrl);
+    await forumService.createPost(author, title, desc, category, selectedFileBase64);
     
     document.getElementById("forum-post-form").reset();
     window.clearForumImage();
@@ -463,7 +326,7 @@ function showOfflineBanner() {
       `;
       banner.innerHTML = `
         <i class="fas fa-wifi-slash" style="animation: pulse 1.5s infinite;"></i>
-        <span>You are offline. Showing cached posts. Reconnecting automatically...</span>
+        <span>You are offline. Showing cached posts.</span>
         <style>
           @keyframes pulse {
             0% { opacity: 0.6; }
@@ -477,9 +340,6 @@ function showOfflineBanner() {
   } else {
     banner.style.display = 'flex';
   }
-  
-  const submitBtn = document.querySelector('#forum-post-form button[type="submit"]');
-  if (submitBtn) submitBtn.disabled = true;
 }
 
 function hideOfflineBanner() {
@@ -487,33 +347,79 @@ function hideOfflineBanner() {
   if (banner) {
     banner.style.display = 'none';
   }
-  
-  const submitBtn = document.querySelector('#forum-post-form button[type="submit"]');
-  if (submitBtn) submitBtn.disabled = false;
 }
 
 // Connection Listeners
 window.addEventListener('online', async () => {
   hideOfflineBanner();
-  notify("Back online! Reconnecting and syncing updates...", "success");
-  
-  // Re-subscribe and fetch missed updates
-  forumRealtime.subscribe(
-    () => loadForumData(false),
-    () => loadForumData(false)
-  );
+  notify("Back online!", "success");
   await loadForumData(false);
 });
 
 window.addEventListener('offline', () => {
   showOfflineBanner();
-  notify("Internet connection lost. You are offline.", "error");
+  notify("Internet connection lost.", "error");
 });
 
-// Clean up real-time on page unload
-window.addEventListener("unload", () => {
-  forumRealtime.unsubscribe();
-});
+// Toast Notifications Helper
+function notify(message, type = 'success') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  const bgColor = type === 'success' ? '#2e7d32' : type === 'error' ? '#c62828' : '#1565c0';
+  
+  toast.style.cssText = `
+    background: ${bgColor};
+    color: #ffffff;
+    padding: 14px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 280px;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+  `;
+
+  const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+  toast.innerHTML = `<i class="fas fa-${icon}"></i> <span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0) scale(1)';
+  }, 50);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px) scale(0.9)';
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 4000);
+}
 
 // DOM Load Initialization
 window.addEventListener("DOMContentLoaded", () => {

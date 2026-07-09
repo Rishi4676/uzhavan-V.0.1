@@ -1,7 +1,4 @@
-import { supabaseForum } from './supabaseForum.js';
-import { forumComments } from './forumComments.js';
-import { forumStorage } from './forumStorage.js';
-
+// Local mock forum service to replace Supabase integration completely
 export const forumService = {
   posts: [],
   comments: [],
@@ -13,13 +10,53 @@ export const forumService = {
   },
 
   async loadData() {
-    const [posts, comments] = await Promise.all([
-      supabaseForum.getPosts(),
-      forumComments.getComments()
-    ]);
+    // Read from localStorage (fallback to sample dummy data if empty)
+    const storedPosts = localStorage.getItem('local_forum_posts');
+    const storedComments = localStorage.getItem('local_forum_comments');
 
-    this.posts = posts;
-    this.comments = comments;
+    if (storedPosts) {
+      this.posts = JSON.parse(storedPosts);
+    } else {
+      // Seed with some sample posts so the forum is not empty
+      this.posts = [
+        {
+          id: '1',
+          author_name: 'Anbarasan (Farmer, Salem)',
+          title: 'Best pest control method for tomato leaf curl virus?',
+          description: 'My tomato crop has started showing leaf curling symptoms. Looking for organic control recommendations.',
+          category: 'pest',
+          image_url: null,
+          upvotes: 5,
+          created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString()
+        },
+        {
+          id: '2',
+          author_name: 'TNAU Expert Advisory',
+          title: 'Kharif crop sowing advisory for July 2026',
+          description: 'Detailed guidelines on soil preparation and seed treatment for paddy and maize crops.',
+          category: 'general',
+          image_url: null,
+          upvotes: 12,
+          created_at: new Date(Date.now() - 3600000 * 5).toISOString()
+        }
+      ];
+      localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
+    }
+
+    if (storedComments) {
+      this.comments = JSON.parse(storedComments);
+    } else {
+      this.comments = [
+        {
+          id: '101',
+          post_id: '1',
+          author: 'TNAU Expert',
+          comment: 'Spray neem seed kernel extract (NSKE) 5% to control whiteflies, which are vectors of the virus.',
+          created_at: new Date(Date.now() - 3600000 * 24).toISOString()
+        }
+      ];
+      localStorage.setItem('local_forum_comments', JSON.stringify(this.comments));
+    }
 
     return this.getProcessedPosts();
   },
@@ -78,31 +115,43 @@ export const forumService = {
   },
 
   async createPost(author, title, desc, category, imageUrl) {
-    return await supabaseForum.createPost({
-      author_name: this.sanitize(author),
+    const newPost = {
+      id: Math.random().toString(36).substring(2, 15),
+      author_name: this.sanitize(author || 'Anonymous Farmer'),
       title: this.sanitize(title),
       description: this.sanitize(desc),
       category,
       image_url: imageUrl,
-      upvotes: 0
-    });
+      upvotes: 0,
+      created_at: new Date().toISOString()
+    };
+
+    this.posts.push(newPost);
+    localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
+    return newPost;
   },
 
   async addComment(postId, author, commentText) {
-    return await forumComments.createComment({
+    const newComment = {
+      id: Math.random().toString(36).substring(2, 15),
       post_id: postId,
-      author: this.sanitize(author),
-      comment: this.sanitize(commentText)
-    });
+      author: this.sanitize(author || 'Member'),
+      comment: this.sanitize(commentText),
+      created_at: new Date().toISOString()
+    };
+
+    this.comments.push(newComment);
+    localStorage.setItem('local_forum_comments', JSON.stringify(this.comments));
+    return newComment;
   },
 
   async upvote(postId) {
     const post = this.posts.find(p => p.id === postId);
     if (!post) return;
     
-    const newUpvotes = post.upvotes + 1;
-    post.upvotes = newUpvotes;
-    return await supabaseForum.upvotePost(postId, newUpvotes);
+    post.upvotes++;
+    localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
+    return post;
   },
 
   sanitize(text) {
