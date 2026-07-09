@@ -4078,9 +4078,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 // Supabase Authentication Event Handlers
 window.loginUser = async function(event) {
   event.preventDefault();
-  const username = document.getElementById('login-username').value;
+  const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
-  const email = username.includes('@') ? username : `${username}@smartfarmer.com`;
 
   try {
     const { authService } = await import('../services/supabase.service.js');
@@ -4099,11 +4098,11 @@ window.loginUser = async function(event) {
 window.registerUser = async function(event) {
   event.preventDefault();
   const fullName = document.getElementById('reg-name').value;
+  const email = document.getElementById('reg-email').value;
   const username = document.getElementById('reg-username').value;
   const phone = document.getElementById('reg-phone').value;
   const village = document.getElementById('reg-village').value;
   const password = document.getElementById('reg-password').value;
-  const email = username.includes('@') ? username : `${username}@smartfarmer.com`;
 
   // Show loading indicator
   const { showLoader, hideLoader, notify } = await import('../services/supabase.service.js');
