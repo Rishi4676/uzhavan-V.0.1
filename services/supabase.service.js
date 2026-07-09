@@ -98,6 +98,7 @@ export const authService = {
         password,
         options: {
           data: metadata,
+          emailRedirectTo: `${window.location.origin}/login.html`
         },
       });
 
