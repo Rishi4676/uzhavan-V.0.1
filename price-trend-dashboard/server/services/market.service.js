@@ -90,6 +90,10 @@ function getCropImage(commodity) {
 
 async function syncMarketData(retryCount = 3) {
   const apiKey = process.env.DATA_GOV_API_KEY || PUBLIC_API_KEY;
+  if (!apiKey) {
+    console.info("[Sync] No DATA_GOV_API_KEY environment variable provided. Skipping dynamic Gov API sync and using cached/pre-seeded SQLite database records.");
+    return;
+  }
   const url = `https://api.data.gov.in/resource/${RESOURCE_ID}?api-key=${apiKey}&format=json&filters[state]=Tamil+Nadu&limit=500`;
 
   console.log(`[Sync] Querying Gov API: ${url}`);

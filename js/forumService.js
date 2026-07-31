@@ -1,64 +1,164 @@
-// Local mock forum service to replace Supabase integration completely
+import { db } from "./firebase-config.js";
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  updateDoc, 
+  doc, 
+  increment 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const defaultPosts = [
+  {
+    id: "post-1",
+    author_name: "Ramanathan (Madurai)",
+    title: "Best organic fertilizers for Tomato crops?",
+    description: "I'm looking for organic ways to improve tomato yield. My crop is currently in the flowering stage. Any recommendations for organic fertilizer mixes or natural pesticide alternatives?",
+    category: "Crops",
+    image_url: null,
+    upvotes: 12,
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "post-2",
+    author_name: "Subramanian (Coimbatore)",
+    title: "Subsidy schemes for Solar Water Pumps in Tamil Nadu",
+    description: "Does anyone know the procedure to apply for the solar pump set subsidy from the Agricultural Engineering Department? What documents are required for registration?",
+    category: "Schemes",
+    image_url: null,
+    upvotes: 8,
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "post-3",
+    author_name: "Dr. K. Ramasamy (TNAU Expert)",
+    title: "How to control Fall Armyworm in Maize?",
+    description: "To manage Fall Armyworm in Maize, farmers are advised to practice deep ploughing, follow synchronous sowing, and use light traps. Biological controls like Metarhizium anisopliae or neem seed kernel extract are also highly effective in the early stages.",
+    category: "Pests",
+    image_url: null,
+    upvotes: 24,
+    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+const defaultComments = [
+  {
+    id: "comment-1",
+    post_id: "post-1",
+    author: "Dr. Selvam (Expert)",
+    comment: "For tomatoes in the flowering stage, organic Panchagavya (3% spray) works wonders. You can also apply vermicompost around the root zone for micro-nutrient availability.",
+    created_at: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "comment-2",
+    post_id: "post-1",
+    author: "Karthik (Farmer)",
+    comment: "I used fish amino acid during the flowering stage and saw a 20% increase in yield. Try it out!",
+    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "comment-3",
+    post_id: "post-2",
+    author: "Palanisamy",
+    comment: "You need to apply through the Agrisnet portal. Make sure you have your land Chitta, Adangal, and Aadhaar card ready.",
+    created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+function compressBase64Image(base64Str, maxWidth = 500, maxHeight = 500) {
+  return new Promise((resolve) => {
+    if (!base64Str) return resolve(null);
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+}
+
 export const forumService = {
   posts: [],
   comments: [],
   filters: {
     category: 'all',
     searchQuery: '',
-    searchType: 'title', // 'title' or 'author'
-    sortBy: 'newest' // 'newest', 'upvoted', 'oldest'
+    searchType: 'title',
+    sortBy: 'newest'
   },
 
   async loadData() {
-    // Read from localStorage (fallback to sample dummy data if empty)
-    const storedPosts = localStorage.getItem('local_forum_posts');
-    const storedComments = localStorage.getItem('local_forum_comments');
+    try {
+      console.log("[Forum] Fetching posts and comments from Cloud Firestore...");
+      
+      // 1. Fetch Posts from Firestore
+      const postsCol = collection(db, "posts");
+      const postsSnapshot = await getDocs(postsCol);
+      const fetchedPosts = postsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-    if (storedPosts) {
-      this.posts = JSON.parse(storedPosts);
-    } else {
-      // Seed with some sample posts so the forum is not empty
-      this.posts = [
-        {
-          id: '1',
-          author_name: 'Anbarasan (Farmer, Salem)',
-          title: 'Best pest control method for tomato leaf curl virus?',
-          description: 'My tomato crop has started showing leaf curling symptoms. Looking for organic control recommendations.',
-          category: 'pest',
-          image_url: null,
-          upvotes: 5,
-          created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString()
-        },
-        {
-          id: '2',
-          author_name: 'TNAU Expert Advisory',
-          title: 'Kharif crop sowing advisory for July 2026',
-          description: 'Detailed guidelines on soil preparation and seed treatment for paddy and maize crops.',
-          category: 'general',
-          image_url: null,
-          upvotes: 12,
-          created_at: new Date(Date.now() - 3600000 * 5).toISOString()
-        }
-      ];
-      localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
+      // 2. Fetch Comments from Firestore
+      const commentsCol = collection(db, "comments");
+      const commentsSnapshot = await getDocs(commentsCol);
+      const fetchedComments = commentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      this.posts = fetchedPosts;
+      this.comments = fetchedComments;
+
+      // Keep localStorage cache updated
+      localStorage.setItem("agri_forum_posts", JSON.stringify(fetchedPosts));
+      localStorage.setItem("agri_forum_comments", JSON.stringify(fetchedComments));
+
+      console.log(`[Forum] Successfully synced with Cloud Firestore. Loaded ${fetchedPosts.length} posts.`);
+      return this.getProcessedPosts();
+    } catch (error) {
+      console.warn("[Forum] Firestore sync failed (possibly due to security rules). Falling back to local storage cache:", error.message);
+      
+      // Load Posts from LocalStorage Cache
+      let storedPosts = localStorage.getItem("agri_forum_posts");
+      if (!storedPosts) {
+        localStorage.setItem("agri_forum_posts", JSON.stringify(defaultPosts));
+        this.posts = [...defaultPosts];
+      } else {
+        this.posts = JSON.parse(storedPosts);
+      }
+
+      // Load Comments from LocalStorage Cache
+      let storedComments = localStorage.getItem("agri_forum_comments");
+      if (!storedComments) {
+        localStorage.setItem("agri_forum_comments", JSON.stringify(defaultComments));
+        this.comments = [...defaultComments];
+      } else {
+        this.comments = JSON.parse(storedComments);
+      }
+
+      return this.getProcessedPosts();
     }
-
-    if (storedComments) {
-      this.comments = JSON.parse(storedComments);
-    } else {
-      this.comments = [
-        {
-          id: '101',
-          post_id: '1',
-          author: 'TNAU Expert',
-          comment: 'Spray neem seed kernel extract (NSKE) 5% to control whiteflies, which are vectors of the virus.',
-          created_at: new Date(Date.now() - 3600000 * 24).toISOString()
-        }
-      ];
-      localStorage.setItem('local_forum_comments', JSON.stringify(this.comments));
-    }
-
-    return this.getProcessedPosts();
   },
 
   setFilter(key, value) {
@@ -114,44 +214,84 @@ export const forumService = {
     });
   },
 
-  async createPost(author, title, desc, category, imageUrl) {
+  async createPost(author, title, desc, category, imageUrl = null) {
+    // Compress image base64 if present to save space
+    const compressedImage = imageUrl ? await compressBase64Image(imageUrl) : null;
+    const tempId = "post-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
     const newPost = {
-      id: Math.random().toString(36).substring(2, 15),
       author_name: this.sanitize(author || 'Anonymous Farmer'),
       title: this.sanitize(title),
       description: this.sanitize(desc),
       category,
-      image_url: imageUrl,
+      image_url: compressedImage,
       upvotes: 0,
       created_at: new Date().toISOString()
     };
 
+    try {
+      console.log("[Forum] Saving new post to Cloud Firestore...");
+      const postsCol = collection(db, "posts");
+      const docRef = await addDoc(postsCol, newPost);
+      newPost.id = docRef.id;
+    } catch (error) {
+      console.warn("[Forum] Firestore write failed. Saving locally to localStorage fallback:", error.message);
+      newPost.id = tempId;
+    }
+
+    // Save to local cache anyway
     this.posts.push(newPost);
-    localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
+    localStorage.setItem("agri_forum_posts", JSON.stringify(this.posts));
     return newPost;
   },
 
   async addComment(postId, author, commentText) {
+    const tempId = "comment-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
     const newComment = {
-      id: Math.random().toString(36).substring(2, 15),
       post_id: postId,
       author: this.sanitize(author || 'Member'),
       comment: this.sanitize(commentText),
       created_at: new Date().toISOString()
     };
 
+    try {
+      console.log("[Forum] Saving comment to Cloud Firestore...");
+      const commentsCol = collection(db, "comments");
+      const docRef = await addDoc(commentsCol, newComment);
+      newComment.id = docRef.id;
+    } catch (error) {
+      console.warn("[Forum] Firestore write failed. Saving locally to localStorage fallback:", error.message);
+      newComment.id = tempId;
+    }
+
+    // Save to local cache anyway
     this.comments.push(newComment);
-    localStorage.setItem('local_forum_comments', JSON.stringify(this.comments));
+    localStorage.setItem("agri_forum_comments", JSON.stringify(this.comments));
     return newComment;
   },
 
   async upvote(postId) {
+    // 1. Update in-memory copy
     const post = this.posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    post.upvotes++;
-    localStorage.setItem('local_forum_posts', JSON.stringify(this.posts));
-    return post;
+    if (post) {
+      post.upvotes++;
+      localStorage.setItem("agri_forum_posts", JSON.stringify(this.posts));
+    }
+
+    // 2. Try Firestore update
+    try {
+      // If the post has a local-only generated temp ID, don't write to Firestore
+      if (postId.startsWith("post-")) {
+        throw new Error("Local-only post upvote. Skipping cloud write.");
+      }
+      console.log("[Forum] Upvoting post in Cloud Firestore...");
+      const postRef = doc(db, "posts", postId);
+      await updateDoc(postRef, {
+        upvotes: increment(1)
+      });
+    } catch (error) {
+      console.warn("[Forum] Firestore upvote failed (local upvote cached):", error.message);
+    }
   },
 
   sanitize(text) {

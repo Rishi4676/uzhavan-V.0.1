@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "../../")));
 
 // Initialize Gemini API client if key is available
 let genAI;
@@ -264,6 +265,46 @@ function runOllamaPrompt(prompt) {
 const marketRoutes = require("./routes/market.routes");
 app.use("/api", marketRoutes);
 
+// Firebase Admin initialization
+const firebaseAdmin = require("./services/firebase-admin.service");
+
+// Firebase Admin Status & Test Connection Endpoint
+app.get("/api/firebase-status", async (req, res) => {
+  if (!firebaseAdmin.isReady()) {
+    return res.status(500).json({
+      initialized: false,
+      message: "Firebase Admin SDK is not initialized. Please verify the service account file."
+    });
+  }
+
+  try {
+    const db = firebaseAdmin.getFirestore();
+    
+    // Quick write/read test to verify database connection works
+    const testDocRef = db.collection("connection_tests").doc("status");
+    await testDocRef.set({
+      last_checked: new Date().toISOString(),
+      status: "connected",
+      message: "Node.js Server successfully connected to Firestore!"
+    });
+
+    const docSnap = await testDocRef.get();
+    const data = docSnap.data();
+
+    res.json({
+      initialized: true,
+      test_result: data,
+      message: "Firebase Firestore Admin SDK successfully connected and verified!"
+    });
+  } catch (error) {
+    console.error("Firebase connection test error:", error.message);
+    res.status(500).json({
+      initialized: true,
+      error: error.message,
+      message: "Firebase Admin SDK initialized, but failed to connect/read/write to Firestore. Verify project rules, region, or IAM roles."
+    });
+  }
+});
 
 
 // AI Market Insights
@@ -437,6 +478,14 @@ app.post("/api/chatbot", async (req, res) => {
   }
 });
 
+// Fallback route to serve index.html for any frontend client-side routing
+app.get("*all", (req, res) => {
+  // Ensure we don't intercept API routes that might be misspelled or missing
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found" });
+  }
+  res.sendFile(path.join(__dirname, "../../index.html"));
+});
 
 if (require.main === module) {
   const { seedDatabase } = require("./repositories/seedData");

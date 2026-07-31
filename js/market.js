@@ -3,6 +3,13 @@
  * Fully integrated with SQLite database backend and Chart.js analytics.
  */
 
+import { db } from "./firebase-config.js";
+import { 
+  collection, 
+  addDoc, 
+  getDocs 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const BACKEND_URL = "/api";
 const LIVE_UPDATE_INTERVAL = 3600000; // Hourly auto-refresh
 
@@ -1001,140 +1008,156 @@ const defaultCategoryImages = {
     "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?w=400&h=300&fit=crop",
 };
 
-function loadMarketplaceListings() {
-  const cached = localStorage.getItem("marketplace_listings");
-  if (cached) {
-    marketplaceListings = JSON.parse(cached);
-  } else {
-    // Standard mock data with 8 beautiful items
-    marketplaceListings = [
-      {
-        id: 1,
-        title: "Premium Ponni Paddy Rice",
-        category: "crops",
-        price: 2600,
-        unit: "per quintal",
-        quantity: "150 Quintals",
-        seller: "Muthuvel K.",
-        phone: "9876543210",
-        district: "Thanjavur",
-        desc: "High-grade organic Ponni paddy, freshly harvested. Moisture content well within limits (12%). Transport can be arranged.",
-        image:
-          "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 2, // 2 hours ago
-      },
-      {
-        id: 2,
-        title: "Organic Carrot (Grade A)",
-        category: "crops",
-        price: 35,
-        unit: "per kg",
-        quantity: "800 kg",
-        seller: "Nilgiri Farmers Coop",
-        phone: "9876543211",
-        district: "Nilgiris",
-        desc: "Freshly harvested carrots, cleaned and graded. Excellent sweetness and size. Bulk discount available.",
-        image:
-          "https://images.unsplash.com/photo-1598170845058-32b996a7024e?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 5, // 5 hours ago
-      },
-      {
-        id: 3,
-        title: "Hybrid Cotton Seeds (Bt-II)",
-        category: "seeds",
-        price: 850,
-        unit: "per packet",
-        quantity: "100 packets",
-        seller: "Velaan Seeds Center",
-        phone: "9876543212",
-        district: "Salem",
-        desc: "High germination rate (90%+), pest-resistant Bt-cotton seeds. Ideal for local soil conditions. Certificate included.",
-        image:
-          "https://images.unsplash.com/photo-1594904351111-a072f80b1a71?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 12, // 12 hours ago
-      },
-      {
-        id: 4,
-        title: "Traditional Paddy Seeds - Mapillai Samba",
-        category: "seeds",
-        price: 120,
-        unit: "per kg",
-        quantity: "300 kg",
-        seller: "Sundaram Organic Farm",
-        phone: "9876543213",
-        district: "Tiruvarur",
-        desc: "Preserved native seed variety. Highly resistant to drought and pests. Excellent health benefits. Grown completely organically.",
-        image:
-          "https://images.unsplash.com/photo-1574323347407-f5e1ad6d66be?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 24, // 1 day ago
-      },
-      {
-        id: 5,
-        title: "Bio-Organic Vermicompost",
-        category: "fertilizers",
-        price: 450,
-        unit: "per 50kg bag",
-        quantity: "50 bags",
-        seller: "GreenTamil Bio-inputs",
-        phone: "9876543214",
-        district: "Coimbatore",
-        desc: "Rich in NPK and micro-nutrients. Double filtered, clean, and odourless. Made from cow dung and plant waste.",
-        image:
-          "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 30, // 1.2 days ago
-      },
-      {
-        id: 6,
-        title: "Natural Neem Cake Powder",
-        category: "fertilizers",
-        price: 600,
-        unit: "per 25kg bag",
-        quantity: "40 bags",
-        seller: "Erode Neem Products",
-        phone: "9876543215",
-        district: "Erode",
-        desc: "Excellent organic fertilizer and pest repellent. Extracted from pure neem seeds. High azadirachtin content.",
-        image:
-          "https://images.unsplash.com/photo-1595155716443-8688b0559220?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 48, // 2 days ago
-      },
-      {
-        id: 7,
-        title: "Handheld Power Tiller & Weeder",
-        category: "equipment",
-        price: 18500,
-        unit: "per unit",
-        quantity: "3 units available",
-        seller: "AgriTech Implements",
-        phone: "9876543216",
-        district: "Tiruppur",
-        desc: "Lightweight 2-stroke engine power weeder. Easy to handle, ideal for inter-crop weeding. 1 year warranty.",
-        image:
-          "https://images.unsplash.com/photo-1589739900243-4b52cd9b104e?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 72, // 3 days ago
-      },
-      {
-        id: 8,
-        title: "Drip Irrigation Lateral Pipes (16mm)",
-        category: "equipment",
-        price: 1200,
-        unit: "per roll (400m)",
-        quantity: "15 rolls",
-        seller: "Krishna Irrigation",
-        phone: "9876543217",
-        district: "Trichy",
-        desc: "UV-stabilized high-density polyethylene lateral pipes. 16mm diameter, Class 2. Durable and clog-resistant.",
-        image:
-          "https://images.unsplash.com/photo-1463123081488-729f6dbcfecb?w=400&h=300&fit=crop",
-        date: Date.now() - 3600000 * 96, // 4 days ago
-      },
-    ];
-    localStorage.setItem(
-      "marketplace_listings",
-      JSON.stringify(marketplaceListings),
-    );
-  }
+const defaultMockListings = [
+  {
+    id: 1,
+    title: "Premium Ponni Paddy Rice",
+    category: "crops",
+    price: 2600,
+    unit: "per quintal",
+    quantity: "150 Quintals",
+    seller: "Muthuvel K.",
+    phone: "9876543210",
+    district: "Thanjavur",
+    desc: "High-grade organic Ponni paddy, freshly harvested. Moisture content well within limits (12%). Transport can be arranged.",
+    image:
+      "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 2, // 2 hours ago
+  },
+  {
+    id: 2,
+    title: "Organic Carrot (Grade A)",
+    category: "crops",
+    price: 35,
+    unit: "per kg",
+    quantity: "800 kg",
+    seller: "Nilgiri Farmers Coop",
+    phone: "9876543211",
+    district: "Nilgiris",
+    desc: "Freshly harvested carrots, cleaned and graded. Excellent sweetness and size. Bulk discount available.",
+    image:
+      "https://images.unsplash.com/photo-1598170845058-32b996a7024e?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 5, // 5 hours ago
+  },
+  {
+    id: 3,
+    title: "Hybrid Cotton Seeds (Bt-II)",
+    category: "seeds",
+    price: 850,
+    unit: "per packet",
+    quantity: "100 packets",
+    seller: "Velaan Seeds Center",
+    phone: "9876543212",
+    district: "Salem",
+    desc: "High germination rate (90%+), pest-resistant Bt-cotton seeds. Ideal for local soil conditions. Certificate included.",
+    image:
+      "https://images.unsplash.com/photo-1594904351111-a072f80b1a71?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 12, // 12 hours ago
+  },
+  {
+    id: 4,
+    title: "Traditional Paddy Seeds - Mapillai Samba",
+    category: "seeds",
+    price: 120,
+    unit: "per kg",
+    quantity: "300 kg",
+    seller: "Sundaram Organic Farm",
+    phone: "9876543213",
+    district: "Tiruvarur",
+    desc: "Preserved native seed variety. Highly resistant to drought and pests. Excellent health benefits. Grown completely organically.",
+    image:
+      "https://images.unsplash.com/photo-1574323347407-f5e1ad6d66be?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 24, // 1 day ago
+  },
+  {
+    id: 5,
+    title: "Bio-Organic Vermicompost",
+    category: "fertilizers",
+    price: 450,
+    unit: "per 50kg bag",
+    quantity: "50 bags",
+    seller: "GreenTamil Bio-inputs",
+    phone: "9876543214",
+    district: "Coimbatore",
+    desc: "Rich in NPK and micro-nutrients. Double filtered, clean, and odourless. Made from cow dung and plant waste.",
+    image:
+      "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 30, // 1.2 days ago
+  },
+  {
+    id: 6,
+    title: "Natural Neem Cake Powder",
+    category: "fertilizers",
+    price: 600,
+    unit: "per 25kg bag",
+    quantity: "40 bags",
+    seller: "Erode Neem Products",
+    phone: "9876543215",
+    district: "Erode",
+    desc: "Excellent organic fertilizer and pest repellent. Extracted from pure neem seeds. High azadirachtin content.",
+    image:
+      "https://images.unsplash.com/photo-1595155716443-8688b0559220?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 48, // 2 days ago
+  },
+  {
+    id: 7,
+    title: "Handheld Power Tiller & Weeder",
+    category: "equipment",
+    price: 18500,
+    unit: "per unit",
+    quantity: "3 units available",
+    seller: "AgriTech Implements",
+    phone: "9876543216",
+    district: "Tiruppur",
+    desc: "Lightweight 2-stroke engine power weeder. Easy to handle, ideal for inter-crop weeding. 1 year warranty.",
+    image:
+      "https://images.unsplash.com/photo-1589739900243-4b52cd9b104e?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 72, // 3 days ago
+  },
+  {
+    id: 8,
+    title: "Drip Irrigation Lateral Pipes (16mm)",
+    category: "equipment",
+    price: 1200,
+    unit: "per roll (400m)",
+    quantity: "15 rolls",
+    seller: "Krishna Irrigation",
+    phone: "9876543217",
+    district: "Trichy",
+    desc: "UV-stabilized high-density polyethylene lateral pipes. 16mm diameter, Class 2. Durable and clog-resistant.",
+    image:
+      "https://images.unsplash.com/photo-1463123081488-729f6dbcfecb?w=400&h=300&fit=crop",
+    date: Date.now() - 3600000 * 96, // 4 days ago
+  },
+];
 
+async function loadMarketplaceListings() {
+  try {
+    console.log("[Marketplace] Fetching listings from Cloud Firestore...");
+    const listingsCol = collection(db, "marketplace_listings");
+    const snapshot = await getDocs(listingsCol);
+    const fetchedListings = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    if (fetchedListings.length > 0) {
+      marketplaceListings = fetchedListings;
+      localStorage.setItem("marketplace_listings", JSON.stringify(fetchedListings));
+      console.log(`[Marketplace] Successfully loaded ${fetchedListings.length} listings from Cloud Firestore.`);
+    } else {
+      console.log("[Marketplace] Cloud Firestore has no listings. Seeding default listings locally.");
+      marketplaceListings = [...defaultMockListings];
+    }
+  } catch (error) {
+    console.warn("[Marketplace] Cloud Firestore fetch failed (possibly due to security rules). Falling back to LocalStorage cache:", error.message);
+    const cached = localStorage.getItem("marketplace_listings");
+    if (cached) {
+      marketplaceListings = JSON.parse(cached);
+    } else {
+      marketplaceListings = [...defaultMockListings];
+    }
+  }
   renderMarketplaceGrid(marketplaceListings);
 }
 
@@ -1249,7 +1272,7 @@ function closeMarketplaceModal() {
   document.getElementById("marketplace-form").reset();
 }
 
-function submitMarketplaceItem(e) {
+async function submitMarketplaceItem(e) {
   e.preventDefault();
 
   const title = document.getElementById("item-name").value.trim();
@@ -1264,7 +1287,6 @@ function submitMarketplaceItem(e) {
   const desc = document.getElementById("item-desc").value.trim();
 
   const newItem = {
-    id: Date.now(),
     title,
     category,
     price,
@@ -1273,10 +1295,23 @@ function submitMarketplaceItem(e) {
     seller,
     phone,
     district,
-    image,
+    image: image || defaultCategoryImages[category] || defaultCategoryImages.crops,
     desc,
     date: Date.now(),
   };
+
+  const tempId = "list-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
+  try {
+    console.log("[Marketplace] Saving item to Cloud Firestore...");
+    const listingsCol = collection(db, "marketplace_listings");
+    const docRef = await addDoc(listingsCol, newItem);
+    newItem.id = docRef.id;
+    console.log("[Marketplace] Item successfully saved to Cloud Firestore.");
+  } catch (error) {
+    console.warn("[Marketplace] Firestore write failed. Saving locally to localStorage fallback:", error.message);
+    newItem.id = tempId;
+  }
 
   marketplaceListings.unshift(newItem);
   localStorage.setItem(

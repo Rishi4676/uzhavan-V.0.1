@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="nav_login">Login</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+        <div class="logo"><h1 data-key="title">Smart Farmer Assistant</h1></div>
+        <button class="lang-switch-btn" onclick="toggleLanguage()" data-key="btn_lang">Tamil</button>
+    </header>
+
+    <div class="container">
+        <h2 style="text-align: center; margin-top: 2rem;" data-key="nav_login">Login</h2>
+        <div class="form-container">
+            <form onsubmit="loginUser(event)">
+                <div class="form-group">
+                    <label data-key="ph_username">Username</label>
+                    <input type="text" id="login-username" required data-key="ph_username">
+                </div>
+                <div class="form-group">
+                    <label data-key="ph_password">Password</label>
+                    <input type="password" id="login-password" required data-key="ph_password">
+                </div>
+                <button type="submit" class="btn" data-key="login_btn">Login</button>
+            </form>
+            <p style="margin-top: 15px; text-align: center;">
+                <a href="register.html" data-key="register_link" style="color: var(--primary-green); text-decoration: none;">Don't have an account? Register</a>
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        <p data-key="footer_text">© 2026 Smart Farmer Assistant. All rights reserved.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>

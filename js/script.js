@@ -1862,15 +1862,7 @@ Rules:
 - Keep responses concise (3-6 sentences or a short bullet list) unless a detailed answer is genuinely needed`;
 }
 
-// Splits the key to bypass GitHub push protection scans
-const _k1 = "gsk_8ryqFX3I";
-const _k2 = "UvTI3sGShvZQWGdy";
-const _k3 = "b3FYK9sFrF3IXMfJmUYWg6BQNGga";
-const GROQ_API_KEY = _k1 + _k2 + _k3;
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-
-// Sends the user message and fetches reply directly from Groq
+// Sends the user message and fetches reply from the backend proxy
 window.sendChatbotMessage = async function () {
   const input = document.getElementById("chatbot-input");
   const chat = document.getElementById("chatbot-messages");
@@ -1881,6 +1873,16 @@ window.sendChatbotMessage = async function () {
   input.value = "";
   chat.scrollTop = chat.scrollHeight;
 
+  // Save user message to history
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem("agri_chatbot_history")) || [];
+  } catch (e) {
+    history = [];
+  }
+  history.push({ role: "user", content: msg });
+  localStorage.setItem("agri_chatbot_history", JSON.stringify(history));
+
   // Typing indicator
   const typingId = "bot-typing-" + Date.now();
   chat.innerHTML += `<div class="bot-msg" id="${typingId}"><i class="fas fa-spinner fa-spin"></i> AgriBot is thinking...</div>`;
@@ -1888,66 +1890,105 @@ window.sendChatbotMessage = async function () {
   const typingEl = document.getElementById(typingId);
 
   const selectedLang = document.getElementById("chatbot-lang")?.value || "en";
+  let botReplyHtml = "";
 
   try {
-    const res = await fetch(GROQ_ENDPOINT, {
+    const res = await fetch("/api/chatbot", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: buildAgriSystemPrompt(selectedLang) },
-          { role: "user", content: msg },
-        ],
-        temperature: 0.4,
-        max_tokens: 512,
-      }),
+        message: msg,
+        language: selectedLang
+      })
     });
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(
-        errData?.error?.message || `Groq API error ${res.status}`,
+        errData?.error || `Chatbot server error ${res.status}`
       );
     }
 
     const data = await res.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim() || "Sorry, I could not generate a response. Please try again.";
+    const reply = data?.reply?.trim() || "Sorry, I could not generate a response. Please try again.";
+
+    botReplyHtml = `
+      ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
+      <div style="font-size: 0.65rem; color: #aaa; margin-top: 6px; text-align: right;">
+        <i class="fas fa-robot"></i> Powered by AgriBot AI Service
+      </div>`;
 
     if (typingEl) {
       typingEl.outerHTML = `
         <div class="bot-msg" style="border-left: 3px solid var(--primary-green); padding-left: 10px;">
-          ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
-          <div style="font-size: 0.65rem; color: #aaa; margin-top: 6px; text-align: right;">
-            <i class="fas fa-robot"></i> Powered by Groq · Llama 3.3
-          </div>
+          ${botReplyHtml}
         </div>`;
     }
   } catch (err) {
-    console.warn("Direct Groq API call failed:", err.message);
-    // Graceful fallback: show error message + local reply
+    console.warn("Backend chatbot API call failed:", err.message);
     const localReply = getLocalFallbackReply(msg, selectedLang);
+    botReplyHtml = `
+      ${localReply.replace(/\n/g, "<br>")}
+      <div style="font-size: 0.68rem; color: #e57373; margin-top: 6px; background: #fff3f3; padding: 5px 8px; border-radius: 5px;">
+        <i class="fas fa-exclamation-triangle"></i> AI offline: ${err.message}. Showing local response.
+      </div>`;
+    
     if (typingEl) {
       typingEl.outerHTML = `
         <div class="bot-msg">
-          ${localReply.replace(/\n/g, "<br>")}
-          <div style="font-size: 0.68rem; color: #e57373; margin-top: 6px; background: #fff3f3; padding: 5px 8px; border-radius: 5px;">
-            <i class="fas fa-exclamation-triangle"></i> AI offline: ${err.message}. Showing local response.
-          </div>
+          ${botReplyHtml}
         </div>`;
     }
   }
 
+  // Save bot reply to history
+  try {
+    history = JSON.parse(localStorage.getItem("agri_chatbot_history")) || [];
+  } catch (e) {
+    history = [];
+  }
+  history.push({ role: "bot", content: botReplyHtml });
+  localStorage.setItem("agri_chatbot_history", JSON.stringify(history));
+
   chat.scrollTop = chat.scrollHeight;
+};
+
+// Clear chatbot history
+window.clearChatHistory = function () {
+  localStorage.removeItem("agri_chatbot_history");
+  setupPremiumChatbotUI();
 };
 
 // Injects the premium UI into the chatbot container on load
 function setupPremiumChatbotUI() {
   const box = document.getElementById("chatbot-box");
   if (!box) return;
+
+  let history = [];
+  try {
+    history = JSON.parse(localStorage.getItem("agri_chatbot_history")) || [];
+  } catch (e) {
+    history = [];
+  }
+
+  let msgsHtml = "";
+  if (history.length === 0) {
+    msgsHtml = `
+      <div class="bot-msg">
+        Hello! I am your <strong>Agri Bot</strong> agricultural helper.<br>
+        Ask me about weather, crop selection, pests/diseases, market prices, and fertilizers!
+      </div>`;
+  } else {
+    history.forEach(m => {
+      if (m.role === "user") {
+        msgsHtml += `<div class="user-msg">${m.content}</div>`;
+      } else {
+        msgsHtml += `<div class="bot-msg" style="border-left: 3px solid var(--primary-green); padding-left: 10px;">${m.content}</div>`;
+      }
+    });
+  }
 
   box.innerHTML = `
     <!-- Chatbot Header -->
@@ -1959,22 +2000,20 @@ function setupPremiumChatbotUI() {
           <span class="bot-status"><span class="status-dot"></span> Online</span>
         </div>
       </div>
-      <div class="chatbot-header-actions">
+      <div class="chatbot-header-actions" style="display: flex; align-items: center; gap: 8px;">
         <select id="chatbot-lang">
           <option value="en" ${currentLang === "en" ? "selected" : ""}>English</option>
           <option value="ta" ${currentLang === "ta" ? "selected" : ""}>Tamil</option>
           <option value="hi" ${currentLang === "hi" ? "selected" : ""}>Hindi</option>
         </select>
+        <button onclick="clearChatHistory()" class="clear-btn" title="Clear History" style="background: none; border: none; color: #fff; cursor: pointer; opacity: 0.8; transition: opacity 0.2s;"><i class="fas fa-trash-alt"></i></button>
         <button onclick="toggleChatbot()" class="close-btn" title="Close"><i class="fas fa-times"></i></button>
       </div>
     </div>
 
     <!-- Chatbot Messages -->
     <div id="chatbot-messages">
-      <div class="bot-msg">
-        Hello! I am your <strong>Agri Bot</strong> agricultural helper.<br>
-        Ask me about weather, crop selection, pests/diseases, market prices, and fertilizers!
-      </div>
+      ${msgsHtml}
     </div>
 
     <!-- Chatbot Input Area -->
@@ -1984,6 +2023,12 @@ function setupPremiumChatbotUI() {
       <button id="chatbot-voice-btn" class="voice-btn" onclick="startVoice()" title="Voice Input"><i class="fas fa-microphone"></i></button>
     </div>
   `;
+  
+  // Scroll to bottom after loading messages
+  setTimeout(() => {
+    const chat = document.getElementById("chatbot-messages");
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  }, 100);
 }
 
 // --- 5. INITIALIZATION ---
@@ -3581,9 +3626,7 @@ window.updateDailyAdvisory = function () {
 
 async function fetchMarketPulseLive() {
   try {
-    const liveUrl =
-      "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b&format=json&limit=20&filters[state]=Tamil%20Nadu";
-    const res = await fetch(liveUrl);
+    const res = await fetch("/api/market-data");
     if (res.ok) {
       const data = await res.json();
       if (data && data.records && data.records.length > 0) {
@@ -3591,9 +3634,9 @@ async function fetchMarketPulseLive() {
           commodity: r.commodity,
           market: r.market,
           district: r.district || "",
-          min_price: r.min_price.toString(),
-          max_price: r.max_price.toString(),
-          modal_price: r.modal_price.toString(),
+          min_price: r.min_price?.toString() || "0",
+          max_price: r.max_price?.toString() || "0",
+          modal_price: r.modal_price?.toString() || "0",
         }));
         localStorage.setItem("market_data_cache", JSON.stringify(formatted));
         loadMarketPulse();

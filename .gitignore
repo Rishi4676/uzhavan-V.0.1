@@ -45,3 +45,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 .env 
+
+# Firebase private key credentials
+agriculture-2a4cc-firebase-adminsdk-fbsvc-df912226a5.json
+tests/screenshots/
+*.mp4

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+        <div class="logo"><h1 data-key="title">Smart Farmer Assistant</h1></div>
+        <button class="lang-switch-btn" onclick="toggleLanguage()" data-key="btn_lang">Tamil</button>
+    </header>
+
+    <div class="container">
+        <h2 style="text-align: center; margin-top: 2rem;">Register</h2>
+        <div class="form-container">
+            <form onsubmit="registerUser(event)">
+                <div class="form-group">
+                    <label data-key="ph_name">Full Name</label>
+                    <input type="text" id="reg-name" required data-key="ph_name">
+                </div>
+                <div class="form-group">
+                    <label data-key="ph_username">Username</label>
+                    <input type="text" id="reg-username" required data-key="ph_username">
+                </div>
+                <div class="form-group">
+                    <label data-key="ph_phone">Phone Number</label>
+                    <input type="tel" id="reg-phone" required data-key="ph_phone">
+                </div>
+                <div class="form-group">
+                    <label data-key="ph_village">Village Name</label>
+                    <input type="text" id="reg-village" required data-key="ph_village">
+                </div>
+                <div class="form-group">
+                    <label data-key="ph_password">Password</label>
+                    <input type="password" id="reg-password" required data-key="ph_password">
+                </div>
+                <button type="submit" class="btn" data-key="submit_btn">Submit</button>
+            </form>
+            <p style="margin-top: 15px; text-align: center;">
+                <a href="login.html" data-key="nav_login" style="color: var(--primary-green); text-decoration: none;">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        <p data-key="footer_text">© 2026 Smart Farmer Assistant. All rights reserved.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>

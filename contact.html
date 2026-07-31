@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="nav_contact">Contact Help</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+        <div class="logo"><h1 data-key="title">Smart Farmer Assistant</h1></div>
+        <nav>
+            <ul>
+                <li><a href="index.html" data-key="nav_home">Home</a></li>
+                <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+                <li><a href="contact.html" data-key="nav_contact">Contact</a></li>
+            </ul>
+        </nav>
+        <button class="lang-switch-btn" onclick="toggleLanguage()" data-key="btn_lang">Tamil</button>
+    </header>
+
+    <div class="container">
+        <h2 data-key="contact_title">Contact Agriculture Officer</h2>
+        
+        <div class="feature-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+            <div class="form-container" style="margin: 0; max-width: 100%;">
+                <form onsubmit="alert('Message Sent!'); return false;">
+                    <div class="form-group">
+                        <label data-key="ph_name">Full Name</label>
+                        <input type="text" required data-key="ph_name">
+                    </div>
+                    <div class="form-group">
+                        <label data-key="ph_phone">Phone Number</label>
+                        <input type="tel" required data-key="ph_phone">
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn" data-key="submit_btn">Submit</button>
+                </form>
+            </div>
+
+            <div class="result-card" style="margin-top: 0; text-align: left;">
+                <h3 style="margin-bottom: 10px;">FAQ</h3>
+                <p><strong>Q: How to apply for PM-Kisan?</strong><br>A: Visit the Schemes page and click Apply Now or visit the nearest E-Seva center.</p>
+                <hr style="margin: 10px 0;">
+                <p><strong>Q: Whom to contact for pest control?</strong><br>A: You can call our helpline at 1800-123-4567 or use the form on the left.</p>
+                <hr style="margin: 10px 0;">
+                <p><strong>Q: How to check soil health?</strong><br>A: Use our Soil Health Card scheme page to find the nearest testing lab.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p data-key="footer_text">© 2026 Smart Farmer Assistant. All rights reserved.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

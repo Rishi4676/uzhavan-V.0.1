@@ -102,7 +102,9 @@ describe("Smart Farmer Assistant - Market Page", () => {
 
     // Execute scripts in JSDOM context
     const runScript = (code) => {
-      const fn = new Function("document", "window", "localStorage", code);
+      // Strip ES6 import statements so that new Function() constructor doesn't throw SyntaxError
+      const cleanCode = code.replace(/import\s+[\s\S]*?from\s+['"].*?['"];/g, "");
+      const fn = new Function("document", "window", "localStorage", cleanCode);
       fn(document, window, localStorage);
     };
 
