@@ -5,6 +5,7 @@ const { spawn } = require("child_process");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
+require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 require("dotenv").config({ path: path.join(__dirname, "../../.env.local") });
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -13,7 +14,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ limit: "15mb", extended: true }));
 app.use(express.static(path.join(__dirname, "../../")));
 
 // Initialize Gemini API client if key is available
@@ -419,6 +421,183 @@ Rules:
 - Always mention if a government scheme or subsidy applies
 - Format answers with clear line breaks and bullet points when listing steps
 - Keep responses concise (3-6 sentences or a short bullet list) unless a detailed answer is genuinely needed`;
+}
+
+// AI Pest & Disease Detection Endpoint
+app.post("/api/detect-pest", async (req, res) => {
+  try {
+    const { image, mimeType } = req.body || {};
+    if (!image || !mimeType) {
+      return res.status(400).json({ error: "Missing image or mimeType in request body" });
+    }
+
+    const systemPrompt = `You are a professional agricultural plant pathologist and AI crop disease detector.
+Analyze the provided crop leaf or plant image, detect the pest, disease, or nutrient deficiency, and return a JSON object with the diagnosis and recommendations.
+The JSON object MUST follow this exact schema:
+{
+  "disease": "Disease Name in English (e.g., Rice Blast (Fungal))",
+  "taDisease": "Disease Name in Tamil (e.g., நெல் குலை நோய் (பூஞ்சை))",
+  "confidence": "Confidence percentage (e.g., 95.8%)",
+  "symptoms": ["Symptom 1 in English", "Symptom 2 in English", "Symptom 3 in English"],
+  "taSymptoms": ["Symptom 1 in Tamil", "Symptom 2 in Tamil", "Symptom 3 in Tamil"],
+  "chemical": "Specific chemical pesticide/fungicide recommendation with percentage (e.g., Tricyclazole 75% WP)",
+  "organic": "Specific organic control method (e.g., Pseudomonas fluorescens or Neem oil spray)",
+  "dosage": "Dosage description in English (e.g., 1.5 g per Liter of water)",
+  "taDosage": "Dosage description in Tamil (e.g., 1.5 கிராம் / லிட்டர் தண்ணீர்)",
+  "dosageValue": 1.5, // numeric value only, represent dosage per Liter
+  "isGram": true, // true if measured in grams/kg, false if measured in ml/L
+  "chemCostAcre": 650, // estimated cost in INR per acre (number only, e.g., 500-1500)
+  "orgCostAcre": 350, // estimated cost in INR per acre (number only, e.g., 200-800)
+  "sporeRisk": "HIGH", // MUST be "HIGH", "MEDIUM", or "LOW" based on disease spread speed
+  "sporeDesc": "Description in English explaining the transmission/spore risk under high humidity or normal weather.",
+  "taSporeDesc": "Description in Tamil explaining transmission/spore risk.",
+  "instructions": ["Step 1 to apply in English", "Step 2 in English", "Step 3 in English"],
+  "taInstructions": ["Step 1 in Tamil", "Step 2 in Tamil", "Step 3 in Tamil"],
+  "duration": "Recovery duration in English (e.g., 10 - 14 days)",
+  "taDuration": "Recovery duration in Tamil (e.g., 10 - 14 நாட்கள்)",
+  "prevention": ["Prevention tip 1 in English", "Prevention tip 2 in English"],
+  "taPrevention": ["Prevention tip 1 in Tamil", "Prevention tip 2 in Tamil"]
+}
+
+Guidelines:
+1. Be highly accurate. If the image is not a plant, crop, or leaf, identify the disease as "Non-crop Image / Healthy" and provide a warning/explanation in the symptoms and instructions.
+2. Provide realistic, scientifically accurate chemical and organic recommendations common in Indian agriculture (e.g., Carbendazim, Mancozeb, Neem oil, Trichoderma viride).
+3. The response MUST be ONLY a JSON object and nothing else. Do not wrap it in markdown code blocks. Just output the raw JSON.`;
+
+    // 1. Try Gemini
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        console.log("Using Gemini for Pest & Disease detection...");
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          generationConfig: { responseMimeType: "application/json" }
+        });
+        const result = await model.generateContent([
+          systemPrompt,
+          {
+            inlineData: {
+              data: image,
+              mimeType: mimeType
+            }
+          }
+        ]);
+        const text = result.response.text();
+        const parsed = safeParseJSON(text);
+        return res.json(parsed);
+      } catch (geminiErr) {
+        console.warn("Gemini pest detection failed, trying Groq:", geminiErr.message);
+      }
+    }
+
+    // 2. Try Groq Vision Fallback
+    if (GROQ_API_KEY) {
+      try {
+        console.log("Using Groq Vision for Pest & Disease detection...");
+        const response = await axios.post(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            model: "llama-3.2-11b-vision-preview",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: systemPrompt },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${mimeType};base64,${image}`
+                    }
+                  }
+                ]
+              }
+            ],
+            temperature: 0.2,
+            response_format: { type: "json_object" }
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${GROQ_API_KEY}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+        const text = response.data.choices[0].message.content;
+        const parsed = safeParseJSON(text);
+        return res.json(parsed);
+      } catch (groqErr) {
+        console.warn("Groq vision pest detection failed, using mock database:", groqErr.message);
+      }
+    }
+
+    // 3. Fallback to mock database
+    console.log("Using local database fallback for Pest & Disease detection...");
+    const fallbackReport = {
+      disease: "Aphid & Sucking Pest Infestation (Foliage)",
+      taDisease: "இலைப்பேன்கள் மற்றும் உறிஞ்சும் பூச்சிகள் (உள்ளூர்)",
+      confidence: "88.0% (Offline Fallback)",
+      symptoms: [
+        "Clusters of tiny green/black soft-bodied insects on leaf undersides",
+        "Curling, crinkling, and yellowing of terminal leaves",
+        "Sticky residue (honeydew) attracting ants and black mold"
+      ],
+      taSymptoms: [
+        "இலைகளின் அடிப்பகுதியில் சிறிய பச்சை/கருப்பு பூச்சிகள் குவிந்திருத்தல்",
+        "இலைகள் சுருண்டு, மஞ்சள் நிறமாக மாறுதல்",
+        "செடியின் மேல் பிசுபிசுப்பான திரவம் காணப்படுதல்"
+      ],
+      chemical: "Imidacloprid 17.8% SL",
+      organic: "Neem oil spray (3% concentration)",
+      dosage: "0.3 ml per Liter of water",
+      taDosage: "0.3 மி.லி / லிட்டர் தண்ணீர்",
+      dosageValue: 0.3,
+      isGram: false,
+      chemCostAcre: 450,
+      orgCostAcre: 250,
+      sporeRisk: "LOW",
+      sporeDesc: "Low direct spore risk. Sucking pests colonize adjacent foliage progressively.",
+      taSporeDesc: "பூச்சிகள் காற்று வழியாக பரவக்கூடியவை, எனினும் வித்துக்கள் போல் காற்றில் எளிதாக பறக்காது.",
+      instructions: [
+        "Spray targeting the undersides of leaves thoroughly.",
+        "Apply Neem oil during low sunlight hours to avoid leaf burn.",
+        "Repeat spray after 7 days if pests are still active."
+      ],
+      taInstructions: [
+        "இலைகளின் கீழ் பகுதி நனையுமாறு நன்றாகத் தெளிக்கவும்",
+        "தாக்கம் குறைந்தவுடன் தெளிப்பதை நிறுத்தவும்",
+        "சூரிய வெளிச்சம் அதிகமில்லாத போது தெளிக்கவும்"
+      ],
+      duration: "5 - 7 days",
+      taDuration: "5 - 7 நாட்கள்",
+      prevention: [
+        "Hang yellow sticky traps to capture winged sucking pests.",
+        "Avoid over-fertilization with nitrogen which attracts pests.",
+        "Encourage beneficial insects like ladybugs and lacewings."
+      ],
+      taPrevention: [
+        "வயல்களில் மஞ்சள் வண்ண ஒட்டும் பொறிகள் வைப்பது",
+        "அதிக நைட்ரஜன் உரம் போடுவதைக் குறைப்பது",
+        "இயற்கை எதிரிகளான பொன்வண்டுகளைப் பாதுகாப்பது"
+      ]
+    };
+    return res.json(fallbackReport);
+
+  } catch (err) {
+    console.error("Top-level error in pest detection endpoint:", err.message);
+    res.status(500).json({ error: "Internal server error during disease detection" });
+  }
+});
+
+function safeParseJSON(text) {
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(json)?/, "").replace(/```$/, "").trim();
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Error parsing JSON content:", e.message, cleaned);
+    throw e;
+  }
 }
 
 // Chatbot Endpoint

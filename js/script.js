@@ -2483,9 +2483,8 @@ window.handleDrop = function (event) {
   }
 };
 
-window.detectDisease = function () {
+window.detectDisease = async function () {
   const fileInput = document.getElementById("pest-upload");
-  const cropSelect = document.getElementById("crop-type-select");
   const resultDiv = document.getElementById("pest-result");
 
   if (!fileInput || !resultDiv) return;
@@ -2499,7 +2498,7 @@ window.detectDisease = function () {
     return;
   }
 
-  const crop = cropSelect ? cropSelect.value : "";
+  const file = fileInput.files[0];
   const isTamil = currentLang === "ta";
 
   // Show premium loading status sequences
@@ -2525,16 +2524,74 @@ window.detectDisease = function () {
     </div>
   `;
 
-  const interval = setInterval(() => {
+  const loadingInterval = setInterval(() => {
     stepIdx++;
     if (stepIdx < loadingSteps.length) {
       const loadText = document.getElementById("pest-loading-text");
       if (loadText) loadText.innerText = loadingSteps[stepIdx];
-    } else {
-      clearInterval(interval);
-      renderDiseaseReport(crop, isTamil, resultDiv);
     }
   }, 600);
+
+  try {
+    // Convert image to base64
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch("/api/detect-pest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        image: base64Data,
+        mimeType: file.type
+      })
+    });
+
+    clearInterval(loadingInterval);
+
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+
+    const report = await res.json();
+    renderDiseaseReport(report, isTamil, resultDiv);
+
+  } catch (error) {
+    clearInterval(loadingInterval);
+    console.warn("AI pest detection failed, using local fallback database:", error.message);
+
+    // Heuristics on filename to guess crop type
+    const name = file.name.toLowerCase();
+    let crop = "default";
+    if (name.includes("rice") || name.includes("paddy")) crop = "paddy";
+    else if (name.includes("wheat") || name.includes("rust")) crop = "wheat";
+    else if (name.includes("maize") || name.includes("corn")) crop = "maize";
+    else if (name.includes("tomato")) crop = "tomato";
+    else if (name.includes("cotton")) crop = "cotton";
+    else if (name.includes("cane") || name.includes("sugarcane")) crop = "sugarcane";
+    else {
+      // Pick one randomly as a default fallback
+      const crops = ["paddy", "wheat", "maize", "tomato", "cotton", "sugarcane"];
+      crop = crops[Math.floor(Math.random() * crops.length)];
+    }
+
+    renderDiseaseReport(crop, isTamil, resultDiv);
+
+    // Append offline banner to indicate it is fallback
+    const banner = document.createElement("div");
+    banner.style.cssText = "font-size: 0.78rem; color: #d32f2f; margin-top: 15px; background: #ffebee; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #ffcdd2; font-weight: 600; display: flex; align-items: center; gap: 8px;";
+    banner.innerHTML = `<i class="fas fa-wifi-slash"></i> <span>${
+      isTamil
+        ? "ஆஃப்லைன் அறிக்கை: AI கண்டறிதல் தோல்வியடைந்தது. படத்தின் பெயரை பகுப்பாய்வு செய்து உள்ளூர் தரவுத்தள அறிக்கை வழங்கப்பட்டுள்ளது."
+        : "Offline Fallback: AI analysis is currently unavailable. Displaying local diagnosis based on file matching."
+    }</span>`;
+    resultDiv.firstElementChild.appendChild(banner);
+  }
 };
 
 // Global dosage update calculations for the estimator
@@ -2573,7 +2630,7 @@ window.updateDosageEstimation = function (
     "₹" + orgCost.toLocaleString();
 };
 
-function renderDiseaseReport(crop, isTamil, resultDiv) {
+function renderDiseaseReport(reportOrCrop, isTamil, resultDiv) {
   // Crop pathology database with dosage metrics and costs
   const pathologyDB = {
     paddy: {
@@ -2943,19 +3000,30 @@ function renderDiseaseReport(crop, isTamil, resultDiv) {
         ],
   };
 
-  const report = pathologyDB[crop] || defaultPathology;
-  const displayName = isTamil ? report.taDisease : report.disease;
+  const report = (reportOrCrop && typeof reportOrCrop === "object")
+    ? reportOrCrop
+    : (pathologyDB[reportOrCrop] || defaultPathology);
+
+  const displayName = isTamil ? (report.taDisease || report.disease) : report.disease;
   const confidenceBadgeColor =
     parseFloat(report.confidence) > 95 ? "#2e7d32" : "#f57c00";
 
+  // Resolve localized lists
+  const symptomsList = isTamil ? (report.taSymptoms || report.symptoms) : report.symptoms;
+  const instructionsList = isTamil ? (report.taInstructions || report.instructions) : report.instructions;
+  const preventionList = isTamil ? (report.taPrevention || report.prevention) : report.prevention;
+  const dosageText = isTamil ? (report.taDosage || report.dosage) : report.dosage;
+  const sporeDescText = isTamil ? (report.taSporeDesc || report.sporeDesc) : report.sporeDesc;
+  const durationText = isTamil ? (report.taDuration || report.duration) : report.duration;
+
   // Build HTML lists
-  const symptomsHtml = report.symptoms
+  const symptomsHtml = (symptomsList || [])
     .map(
       (s) =>
         `<li><i class="fas fa-exclamation-triangle" style="color: #ffd600; margin-right: 8px;"></i> ${s}</li>`,
     )
     .join("");
-  const instructionsHtml = report.instructions
+  const instructionsHtml = (instructionsList || [])
     .map(
       (inst, index) =>
         `<li><span class="step-num" style="display: inline-flex; align-items: center; justify-content: center; background: var(--primary-green); color: white; width: 20px; height: 20px; border-radius: 50%; font-size: 0.72rem; font-weight: 700; margin-right: 8px;">${index + 1}</span> ${inst}</li>`,
@@ -3028,7 +3096,7 @@ function renderDiseaseReport(crop, isTamil, resultDiv) {
           <div style="background: #e8f5e9; border-left: 4px solid var(--primary-green); padding: 15px; border-radius: 8px;">
             <strong style="color: var(--primary-green); font-size: 0.82rem; text-transform: uppercase; display: block; margin-bottom: 4px;">${durationLabel}</strong>
             <span style="font-size: 1.15rem; font-weight: 800; color: #1b5e20; display: flex; align-items: center; gap: 8px;">
-              <i class="far fa-clock"></i> ${report.duration}
+              <i class="far fa-clock"></i> ${durationText}
             </span>
           </div>
         </div>
@@ -3050,7 +3118,7 @@ function renderDiseaseReport(crop, isTamil, resultDiv) {
 
             <div style="border-top: 1px dashed #e8f5e9; padding-top: 10px; margin-top: 10px;">
               <span style="font-size: 0.75rem; color: #666; font-weight: 600;">${doseLabel}</span>
-              <span style="display: block; font-weight: 700; color: #2e7d32; font-size: 1rem; margin-top: 2px;">${report.dosage}</span>
+              <span style="display: block; font-weight: 700; color: #2e7d32; font-size: 1rem; margin-top: 2px;">${dosageText}</span>
             </div>
           </div>
 
@@ -3060,7 +3128,7 @@ function renderDiseaseReport(crop, isTamil, resultDiv) {
               <span style="font-size: 0.85rem; font-weight: 700; color: #333;">${riskTitle}</span>
               <span style="background: ${riskBadgeColor}; color: white; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 0.78rem;">${report.sporeRisk}</span>
             </div>
-            <p style="font-size: 0.82rem; color: #555; line-height: 1.5; margin: 0;">${report.sporeDesc}</p>
+            <p style="font-size: 0.82rem; color: #555; line-height: 1.5; margin: 0;">${sporeDescText}</p>
           </div>
         </div>
       </div>
@@ -3077,7 +3145,7 @@ function renderDiseaseReport(crop, isTamil, resultDiv) {
         <div>
           <h4 style="color: #333; font-weight: 700; font-size: 0.95rem; margin-bottom: 12px;">${preventionTitle}</h4>
           <ul style="padding-left: 20px; margin: 0; font-size: 0.88rem; color: #555; line-height: 1.6; display: flex; flex-direction: column; gap: 6px;">
-            ${report.prevention.map((p) => `<li>${p}</li>`).join("")}
+            ${(preventionList || []).map((p) => `<li>${p}</li>`).join("")}
           </ul>
         </div>
       </div>

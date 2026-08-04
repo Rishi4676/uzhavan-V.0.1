@@ -15,6 +15,7 @@
     "vitest": "^4.1.4"
   },
   "scripts": {
+    "start": "node price-trend-dashboard/server/index.js",
     "dev": "vite",
     "build": "vite build",
     "server": "node price-trend-dashboard/server/index.js",
