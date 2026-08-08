@@ -78,7 +78,7 @@ const translations = {
     govt_verify_btn: "Go to TN Govt E-Services Portal",
   },
   ta: {
-    title: "ஸ்மார்ட் விவசாய உதவியாளர்",
+    title: "ஸ்மார்ட் விவசாயி உதவியாளர்",
     nav_home: "முகப்பு",
     nav_weather: "வானிலை",
     nav_market: "சந்தை விலை",
@@ -153,7 +153,7 @@ const translations = {
 
 const translationDictionary = {
   // Navigation & General
-  "Smart Farmer Assistant": "ஸ்மார்ட் விவசாய உதவியாளர்",
+  "Smart Farmer Assistant": "ஸ்மார்ட் விவசாயி உதவியாளர்",
   Home: "முகப்பு",
   Weather: "வானிலை",
   "Land Survey": "நில அளவை",
@@ -202,6 +202,38 @@ const translationDictionary = {
   Government: "அரசு செய்திகள்",
   "Live Feed": "நேரடி ஊட்டங்கள்",
   Trending: "பிரபலமானவை",
+
+  // News Headlines & Tags
+  "TNAU releases new high-yielding paddy variety for 2026": "2026 ஆம் ஆண்டிற்கான புதிய அதிக மகசூல் தரும் நெல் ரகத்தை TNAU வெளியிடுகிறது",
+  "Government increases MSP for Kharif crops by 15%": "காரிஃப் பயிர்களுக்கான குறைந்தபட்ச ஆதரவு விலையை (MSP) அரசு 15% உயர்த்தியுள்ளது",
+  "Organic farming clusters to be set up in 10 more districts": "மேலும் 10 மாவட்டங்களில் இயற்கை விவசாய தொகுப்புகள் அமைக்கப்பட உள்ளன",
+  "LATEST": "சமீபத்திய",
+  "GOVT": "அரசு",
+  "TRENDING": "பிரபலமானவை",
+  "LIVE": "நேரடி",
+  "Read More": "மேலும் படிக்க",
+
+  // Weather Descriptions
+  "Clear sky": "தெளிவான வானம்",
+  "Mainly clear": "பெரும்பாலும் தெளிவானது",
+  "Partly cloudy": "பகுதி மேகமூட்டம்",
+  "Cloudy": "மேகமூட்டம்",
+  "Foggy": "மூடுபனி",
+  "Depositing rime fog": "அடர்ந்த மூடுபனி",
+  "Light drizzle": "லேசான சாரல்",
+  "Moderate drizzle": "மிதமான சாரல்",
+  "Dense drizzle": "அடர்ந்த சாரல்",
+  "Slight rain": "லேசான மழை",
+  "Moderate rain": "மிதமான மழை",
+  "Heavy rain": "பலத்த மழை",
+  "Slight snow fall": "லேசான பனிப்பொழிவு",
+  "Moderate snow fall": "மிதமான பனிப்பொழிவு",
+  "Heavy snow fall": "பலத்த பனிப்பொழிவு",
+  "Slight rain showers": "லேசான மழைத்தூறல்",
+  "Moderate rain showers": "மிதமான மழைத்தூறல்",
+  "Violent rain showers": "கடும் மழைத்தூறல்",
+  "Thunderstorm": "இடிமின்னலுடன் கூடிய மழை",
+  "Unspecified weather": "குறிப்பிடப்படாத வானிலை",
 
   // Weather Page
   "Check Today's Weather": "இன்றைய வானிலையைச் சரிபார்க்கவும்",
@@ -461,7 +493,6 @@ let newsData = [
   },
 ];
 let currentNewsIndex = 0;
-
 async function fetchRealAgriNews() {
   const feed = document.getElementById("news-feed");
 
@@ -469,18 +500,25 @@ async function fetchRealAgriNews() {
     if (feed && newsData.length > 0) {
       feed.innerHTML = newsData
         .map(
-          (n) => `
+          (n) => {
+            const rawTitle = n.title;
+            const title = currentLang === "ta" ? (translationDictionary[rawTitle] || rawTitle) : rawTitle;
+            const rawTag = n.tag;
+            const tagText = currentLang === "ta" ? (translationDictionary[rawTag] || rawTag) : rawTag;
+            const readMoreText = currentLang === "ta" ? "மேலும் படிக்க" : "Read More";
+            return `
                     <div style="background: #f9fbf8; border: 1px solid #e8f5e9; border-radius: 10px; padding: 20px; transition: all 0.3s ease; display: flex; flex-direction: column; justify-content: space-between; height: 100%;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                         <div>
-                            <span style="background: ${n.tag === "GOVT" ? "#1565c0" : n.tag === "LIVE" ? "#d32f2f" : "#2e7d32"}; color: white; font-size: 0.65rem; padding: 3px 10px; border-radius: 20px; font-weight: bold; text-transform: uppercase; display: inline-block; margin-bottom: 10px;">${n.tag}</span>
-                            <h4 style="font-size: 0.95rem; color: #333; margin: 0 0 15px 0; line-height: 1.4; font-weight: 600;">${n.title}</h4>
+                            <span style="background: ${n.tag === "GOVT" ? "#1565c0" : n.tag === "LIVE" ? "#d32f2f" : "#2e7d32"}; color: white; font-size: 0.65rem; padding: 3px 10px; border-radius: 20px; font-weight: bold; text-transform: uppercase; display: inline-block; margin-bottom: 10px;">${tagText}</span>
+                            <h4 style="font-size: 0.95rem; color: #333; margin: 0 0 15px 0; line-height: 1.4; font-weight: 600;">${title}</h4>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 12px; margin-top: auto;">
                             <span style="font-size: 0.75rem; color: #777;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i>${n.date}</span>
-                            <a href="${n.link}" target="_blank" style="color: #2e7d32; font-size: 0.8rem; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 4px;">Read More <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i></a>
+                            <a href="${n.link}" target="_blank" style="color: #2e7d32; font-size: 0.8rem; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 4px;">${readMoreText} <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i></a>
                         </div>
                     </div>
-                `,
+                `;
+          }
         )
         .join("");
     }
@@ -488,7 +526,7 @@ async function fetchRealAgriNews() {
   };
 
   try {
-    const response = await fetch("/api/news");
+    const response = await fetch(`/api/news?lang=${currentLang}`);
     if (!response.ok) {
       throw new Error(`Server returned ${response.status}`);
     }
@@ -521,7 +559,9 @@ function rotateNewsQuote() {
   if (quoteEl && newsData.length > 0) {
     quoteEl.style.opacity = "0";
     setTimeout(() => {
-      quoteEl.innerText = newsData[currentNewsIndex].title;
+      const rawTitle = newsData[currentNewsIndex].title;
+      const title = currentLang === "ta" ? (translationDictionary[rawTitle] || rawTitle) : rawTitle;
+      quoteEl.innerText = title;
       quoteEl.style.opacity = "1";
       currentNewsIndex = (currentNewsIndex + 1) % newsData.length;
     }, 500);

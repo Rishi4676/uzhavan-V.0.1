@@ -72,14 +72,14 @@ async function fetchMarketData() {
 
     // Success Indicator States
     if (lastUpdated)
-      lastUpdated.innerText = `Last Sync: ${new Date().toLocaleTimeString()}`;
+      lastUpdated.textContent = `Last Sync: ${new Date().toLocaleTimeString()}`;
     if (pulseDot) pulseDot.style.display = "inline-block";
     if (liveIndicator) {
       liveIndicator.style.background = "#e8f5e9";
       liveIndicator.style.borderColor = "#c8e6c9";
       const liveText = liveIndicator.querySelector("span:nth-of-type(2)");
       if (liveText) {
-        liveText.innerText = "LIVE MARKET";
+        liveText.textContent = "LIVE MARKET";
         liveText.style.color = "#2e7d32";
       }
     }
@@ -119,14 +119,14 @@ async function fetchMarketData() {
     }
 
     if (lastUpdated)
-      lastUpdated.innerText = "Official Government Market Data Temporarily Unavailable";
+      lastUpdated.textContent = "Official Government Market Data Temporarily Unavailable";
     if (pulseDot) pulseDot.style.display = "none";
     if (liveIndicator) {
       liveIndicator.style.background = "#ffebee";
       liveIndicator.style.borderColor = "#ffcdd2";
       const liveText = liveIndicator.querySelector("span:nth-of-type(2)");
       if (liveText) {
-        liveText.innerText = "OFFLINE";
+        liveText.textContent = "OFFLINE";
         liveText.style.color = "#c62828";
       }
     }

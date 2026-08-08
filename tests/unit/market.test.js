@@ -123,11 +123,11 @@ describe("Smart Farmer Assistant - Market Page", () => {
       // Check that table body shows the offline warning row
       const rows = document.querySelectorAll("#market-table-body tr");
       expect(rows.length).toBe(1);
-      expect(rows[0].innerText).toContain("Live Data Temporarily Unavailable");
+      expect(rows[0].textContent).toContain("Official Government Market Data Temporarily Unavailable");
 
-      // Check that "Live Data Temporarily Unavailable" is displayed when offline
+      // Check that "Official Government Market Data Temporarily Unavailable" is displayed when offline
       const lastUpdated = document.getElementById("last-updated-time");
-      expect(lastUpdated.innerText).toBe("Live Data Temporarily Unavailable");
+      expect(lastUpdated.textContent).toContain("Official Government Market Data Temporarily Unavailable");
     }
   });
 

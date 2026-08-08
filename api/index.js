@@ -1,3 +1,4 @@
-const { app } = require("../price-trend-dashboard/server/index.js");
+import pkg from "../price-trend-dashboard/server/index.js";
+const { app } = pkg;
 
-module.exports = app;
+export default app;

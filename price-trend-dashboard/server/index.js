@@ -239,27 +239,35 @@ function buildChatbotReply(message, language, aiReply) {
 
 function runOllamaPrompt(prompt) {
   return new Promise((resolve, reject) => {
-    const child = spawn("ollama", ["run", "llama3:latest", prompt], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let output = "";
-    let errorOutput = "";
+    try {
+      const child = spawn("ollama", ["run", "llama3:latest", prompt], {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "";
+      let errorOutput = "";
 
-    child.stdout.on("data", (data) => {
-      output += data.toString();
-    });
+      child.on("error", (err) => {
+        reject(err);
+      });
 
-    child.stderr.on("data", (data) => {
-      errorOutput += data.toString();
-    });
+      child.stdout.on("data", (data) => {
+        output += data.toString();
+      });
 
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(errorOutput || "Ollama failed"));
-        return;
-      }
-      resolve(output.trim());
-    });
+      child.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
+
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new Error(errorOutput || "Ollama failed"));
+          return;
+        }
+        resolve(output.trim());
+      });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -267,7 +275,88 @@ function runOllamaPrompt(prompt) {
 const marketRoutes = require("./routes/market.routes");
 app.use("/api", marketRoutes);
 
-// RSS Feed endpoint for live agricultural news
+// Translation helper dictionary for offline news translation
+function translateTextWithDict(text) {
+  const dict = {
+    "TNAU releases new high-yielding paddy variety for 2026": "2026 ஆம் ஆண்டிற்கான புதிய அதிக மகசூல் தரும் நெல் ரகத்தை TNAU வெளியிடுகிறது",
+    "Government increases MSP for Kharif crops by 15%": "காரிஃப் பயிர்களுக்கான குறைந்தபட்ச ஆதரவு விலையை (MSP) அரசு 15% உயர்த்தியுள்ளது",
+    "Organic farming clusters to be set up in 10 more districts": "மேலும் 10 மாவட்டங்களில் இயற்கை விவசாய தொகுப்புகள் அமைக்கப்பட உள்ளன",
+    "paddy": "நெல்",
+    "crop": "பயிர்",
+    "crops": "பயிர்கள்",
+    "farmer": "விவசாயி",
+    "farmers": "விவசாயிகள்",
+    "agriculture": "விவசாயம்",
+    "market": "சந்தை",
+    "price": "விலை",
+    "prices": "விலைகள்",
+    "weather": "வானிலை",
+    "rain": "மழை",
+    "fertilizer": "உரம்",
+    "fertilizers": "உரங்கள்",
+    "pest": "பூச்சி",
+    "pests": "பூச்சிகள்",
+    "disease": "நோய்",
+    "diseases": "நோய்கள்",
+    "Government": "அரசு",
+    "TNAU": "தமிழ்நாடு வேளாண்மைப் பல்கலைக்கழகம் (TNAU)"
+  };
+  
+  let translated = text;
+  // Try exact match first
+  if (dict[text]) {
+    return dict[text];
+  }
+  // Try word-based translation fallback
+  for (const [key, value] of Object.entries(dict)) {
+    const regex = new RegExp(`\\b${key}\\b`, 'gi');
+    translated = translated.replace(regex, value);
+  }
+  return translated;
+}
+
+// AI and Dictionary News Translator
+async function translateNewsToTamil(items) {
+  const titles = items.map(item => item.title);
+  const prompt = `Translate the following agricultural news titles into clear, simple Tamil.
+Return the translated titles as a JSON array of strings in the exact same order.
+Titles:
+${JSON.stringify(titles)}
+
+Your response MUST be ONLY a raw JSON array of strings and nothing else. Do not wrap it in markdown code blocks.`;
+
+  try {
+    if (GROQ_API_KEY) {
+      const reply = await runGroqPrompt(prompt);
+      const translatedTitles = safeParseJSON(reply);
+      if (Array.isArray(translatedTitles) && translatedTitles.length === items.length) {
+        return items.map((item, idx) => ({
+          ...item,
+          title: translatedTitles[idx]
+        }));
+      }
+    } else if (process.env.GEMINI_API_KEY) {
+      const reply = await runGeminiPrompt(prompt);
+      const translatedTitles = safeParseJSON(reply);
+      if (Array.isArray(translatedTitles) && translatedTitles.length === items.length) {
+        return items.map((item, idx) => ({
+          ...item,
+          title: translatedTitles[idx]
+        }));
+      }
+    }
+  } catch (err) {
+    console.error("Failed to translate news using AI:", err.message);
+  }
+
+  // Fallback to simple dictionary / word replacement if AI is offline
+  return items.map(item => ({
+    ...item,
+    title: translateTextWithDict(item.title)
+  }));
+}
+
+// RSS Feed endpoint for live agricultural news with translation support
 app.get("/api/news", async (req, res) => {
   try {
     const rssUrl = "https://khetigaadi.com/blog/category/agriculture/feed";
@@ -278,7 +367,7 @@ app.get("/api/news", async (req, res) => {
     const xmlText = await feedRes.text();
     
     // Parse RSS using regular expressions to keep dependencies minimal
-    const items = [];
+    let items = [];
     const matches = xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g);
     
     for (const match of matches) {
@@ -312,7 +401,14 @@ app.get("/api/news", async (req, res) => {
       });
     }
 
-    res.json(items.slice(0, 10)); // Return top 10 news items
+    items = items.slice(0, 10); // Return top 10 news items
+
+    const lang = req.query.lang || req.headers["accept-language"];
+    if (lang && lang.startsWith("ta")) {
+      items = await translateNewsToTamil(items);
+    }
+
+    res.json(items);
   } catch (error) {
     console.error("Error fetching live news:", error.message);
     res.status(500).json({ error: "Failed to fetch live news" });
