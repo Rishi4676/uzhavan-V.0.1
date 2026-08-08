@@ -1382,6 +1382,70 @@ function sendBuiltInMessage() {
   closeContactModal();
 }
 
+async function fetchAIInsights(records) {
+  const sentimentEl = document.getElementById("sentiment-detail");
+  const listEl = document.getElementById("ai-recommendations-list");
+  if (!sentimentEl || !listEl) return;
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/ai-insights`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ marketData: records }),
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch AI insights");
+
+    const data = await response.json();
+    if (data.sentiment) {
+      sentimentEl.innerText = data.sentiment;
+    }
+    if (Array.isArray(data.recommendations)) {
+      listEl.innerHTML = data.recommendations
+        .map(
+          (crop) => `
+          <li style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            background: rgba(255,255,255,0.05);
+            padding: 8px 12px;
+            border-radius: 8px;
+          ">
+            <span style="font-size: 1.1rem;">🌱</span>
+            <span>${crop}</span>
+          </li>
+        `
+        )
+        .join("");
+    }
+  } catch (err) {
+    console.warn("Failed to load AI market insights:", err.message);
+    sentimentEl.innerText = "Stable market with moderate demand. Check regional mandis for peak prices.";
+    listEl.innerHTML = `
+      <li style="display: flex; align-items: center; gap: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;"><span style="font-size: 1.1rem;">🌱</span><span>Rice</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;"><span style="font-size: 1.1rem;">🌱</span><span>Tomato</span></li>
+      <li style="display: flex; align-items: center; gap: 10px; font-size: 0.95rem; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px;"><span style="font-size: 1.1rem;">🌱</span><span>Onion</span></li>
+    `;
+  }
+}
+
+// Global Window Exports
+window.switchMarketTab = switchMarketTab;
+window.refreshMarketData = refreshMarketData;
+window.switchTrackerSubTab = switchTrackerSubTab;
+window.filterMarketplaceCategory = filterMarketplaceCategory;
+window.openMarketplaceModal = openMarketplaceModal;
+window.closeMarketplaceModal = closeMarketplaceModal;
+window.closeContactModal = closeContactModal;
+window.openWhatsAppChat = openWhatsAppChat;
+window.sendBuiltInMessage = sendBuiltInMessage;
+window.fetchAIInsights = fetchAIInsights;
+window.openContactModal = openContactModal;
+
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
   fetchMarketData();

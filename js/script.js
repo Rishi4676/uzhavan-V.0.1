@@ -488,55 +488,18 @@ async function fetchRealAgriNews() {
   };
 
   try {
-    // Fetching from multiple agricultural RSS feeds via proxy
-    const sources = [
-      "https://www.thehindu.com/sci-tech/agriculture/feeder/default.rss",
-      "https://www.agweb.com/rss/news",
-    ];
-    const source = sources[Math.floor(Math.random() * sources.length)];
-    const response = await fetch(
-      `https://api.rss2json.com/v1/api.json?rss_url=${source}`,
-    );
-    const data = await response.json();
-    if (data.status === "ok" && data.items.length > 0) {
-      const fetchedNews = data.items.map((item) => {
-        let formattedDate;
-        if (item.pubDate) {
-          try {
-            const dateObj = new Date(item.pubDate.replace(/-/g, "/"));
-            if (!isNaN(dateObj.getTime())) {
-              const options = {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              };
-              formattedDate = dateObj.toLocaleString("en-US", options);
-            } else {
-              formattedDate = item.pubDate;
-            }
-          } catch (e) {
-            formattedDate = item.pubDate;
-          }
-        } else {
-          formattedDate = new Date().toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          });
-        }
-        return {
-          title: item.title,
-          date: formattedDate,
-          tag: "LIVE",
-          link: item.link,
-        };
-      });
+    const response = await fetch("/api/news");
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+    const items = await response.json();
+    if (items && items.length > 0) {
+      const fetchedNews = items.map((item) => ({
+        title: item.title,
+        date: item.date || new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+        tag: "LIVE",
+        link: item.link,
+      }));
       // Keep some local govt news at the top
       newsData = [
         ...newsData.filter((n) => n.tag === "GOVT").slice(0, 2),
@@ -545,7 +508,8 @@ async function fetchRealAgriNews() {
     }
   } catch (e) {
     console.warn(
-      "News API restricted or failed, using high-quality local flow.",
+      "News API restricted or failed, using local flow:",
+      e.message,
     );
   } finally {
     updateUI();
@@ -4150,6 +4114,12 @@ window.translateCommodity = function (comm) {
   }
   return comm;
 };
+
+window.toggleLanguage = toggleLanguage;
+window.toggleDrawMode = toggleDrawMode;
+window.clearCurrentMapping = clearCurrentMapping;
+window.saveCurrentField = saveCurrentField;
+window.getWeather = getWeather;
 
 // Auto-load dashboard sections on home page
 document.addEventListener("DOMContentLoaded", async () => {

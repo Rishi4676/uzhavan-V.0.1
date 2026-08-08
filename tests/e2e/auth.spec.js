@@ -15,6 +15,16 @@ test.describe("Authentication and Database Flow", () => {
       console.error(`[Browser PageError] ${err.message}`);
     });
 
+    page.on("requestfailed", (request) => {
+      console.error(`[Browser RequestFailed] ${request.url()}: ${request.failure()?.errorText || "Unknown error"}`);
+    });
+
+    page.on("response", (response) => {
+      if (response.status() >= 400) {
+        console.error(`[Browser Response Error] ${response.url()}: ${response.status()}`);
+      }
+    });
+
     // 1. Navigate to Registration Page
     await page.goto("/register.html");
 
@@ -29,6 +39,7 @@ test.describe("Authentication and Database Flow", () => {
     let alertMsg = "";
     page.on("dialog", async (dialog) => {
       alertMsg = dialog.message();
+      console.log(`[Browser Dialog] ${dialog.type().toUpperCase()}: ${alertMsg}`);
       await dialog.accept();
     });
 

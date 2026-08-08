@@ -267,6 +267,58 @@ function runOllamaPrompt(prompt) {
 const marketRoutes = require("./routes/market.routes");
 app.use("/api", marketRoutes);
 
+// RSS Feed endpoint for live agricultural news
+app.get("/api/news", async (req, res) => {
+  try {
+    const rssUrl = "https://khetigaadi.com/blog/category/agriculture/feed";
+    const feedRes = await fetch(rssUrl);
+    if (!feedRes.ok) {
+      throw new Error(`Failed to fetch RSS feed: ${feedRes.status}`);
+    }
+    const xmlText = await feedRes.text();
+    
+    // Parse RSS using regular expressions to keep dependencies minimal
+    const items = [];
+    const matches = xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g);
+    
+    for (const match of matches) {
+      const content = match[1];
+      const titleMatch = content.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
+      const linkMatch = content.match(/<link>([\s\S]*?)<\/link>/);
+      const pubDateMatch = content.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
+      
+      let dateString = "";
+      if (pubDateMatch) {
+        try {
+          const dateObj = new Date(pubDateMatch[1].trim());
+          if (!isNaN(dateObj.getTime())) {
+            dateString = dateObj.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric"
+            });
+          } else {
+            dateString = pubDateMatch[1].trim();
+          }
+        } catch (e) {
+          dateString = pubDateMatch[1].trim();
+        }
+      }
+
+      items.push({
+        title: titleMatch ? titleMatch[1].trim() : "Farming Update",
+        link: linkMatch ? linkMatch[1].trim() : "#",
+        date: dateString
+      });
+    }
+
+    res.json(items.slice(0, 10)); // Return top 10 news items
+  } catch (error) {
+    console.error("Error fetching live news:", error.message);
+    res.status(500).json({ error: "Failed to fetch live news" });
+  }
+});
+
 // Firebase Admin initialization
 const firebaseAdmin = require("./services/firebase-admin.service");
 
