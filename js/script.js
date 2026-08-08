@@ -1656,6 +1656,7 @@ window.suggestCrops = function () {
 
 // Global variables for chatbot
 let voiceRecognitionInstance = null;
+let lastInteractionWasVoice = false;
 
 // Toggles mobile menu from the hamburger icon
 window.toggleMobileMenu = function () {
@@ -1723,6 +1724,8 @@ window.startVoice = function () {
       if (input) {
         input.value = text;
         input.focus();
+        lastInteractionWasVoice = true;
+        window.sendChatbotMessage();
       }
     };
   }
@@ -1867,6 +1870,45 @@ Rules:
 }
 
 // Sends the user message and fetches reply from the backend proxy
+// Speaks text using SpeechSynthesis (Text-to-Speech)
+window.speakText = function (text, lang) {
+  if (!window.speechSynthesis) {
+    console.warn("Speech Synthesis is not supported in this browser.");
+    return;
+  }
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+
+  // Clean the text from HTML tags and double quotes for clean speech
+  const cleanedText = text
+    .replace(/<[^>]*>/g, "")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .trim();
+
+  const utterance = new SpeechSynthesisUtterance(cleanedText);
+
+  // Configure language
+  if (lang === "ta") {
+    utterance.lang = "ta-IN";
+  } else if (lang === "hi") {
+    utterance.lang = "hi-IN";
+  } else {
+    utterance.lang = "en-US";
+  }
+
+  // Find a voice for the language if possible
+  const voices = window.speechSynthesis.getVoices();
+  const matchedVoice = voices.find((v) => v.lang.startsWith(utterance.lang));
+  if (matchedVoice) {
+    utterance.voice = matchedVoice;
+  }
+
+  window.speechSynthesis.speak(utterance);
+};
+
+// Sends the user message and fetches reply from the backend proxy
 window.sendChatbotMessage = async function () {
   const input = document.getElementById("chatbot-input");
   const chat = document.getElementById("chatbot-messages");
@@ -1918,10 +1960,20 @@ window.sendChatbotMessage = async function () {
     const data = await res.json();
     const reply = data?.reply?.trim() || "Sorry, I could not generate a response. Please try again.";
 
+    // Auto-speak if the user asked via voice
+    if (lastInteractionWasVoice) {
+      window.speakText(reply, selectedLang);
+      lastInteractionWasVoice = false;
+    }
+
+    const cleanReplyForSpeaker = reply.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, " ");
     botReplyHtml = `
       ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
-      <div style="font-size: 0.65rem; color: #aaa; margin-top: 6px; text-align: right;">
-        <i class="fas fa-robot"></i> Powered by AgriBot AI Service
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; color: #aaa; margin-top: 6px;">
+        <button class="speaker-btn" onclick="window.speakText('${cleanReplyForSpeaker}', '${selectedLang}')" style="background: none; border: none; color: var(--primary-green); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='none'">
+          <i class="fas fa-volume-up"></i> Listen
+        </button>
+        <span><i class="fas fa-robot"></i> Powered by AgriBot AI</span>
       </div>`;
 
     if (typingEl) {
@@ -1933,10 +1985,21 @@ window.sendChatbotMessage = async function () {
   } catch (err) {
     console.warn("Backend chatbot API call failed:", err.message);
     const localReply = getLocalFallbackReply(msg, selectedLang);
+
+    // Auto-speak if the user asked via voice
+    if (lastInteractionWasVoice) {
+      window.speakText(localReply, selectedLang);
+      lastInteractionWasVoice = false;
+    }
+
+    const cleanReplyForSpeaker = localReply.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, " ");
     botReplyHtml = `
       ${localReply.replace(/\n/g, "<br>")}
-      <div style="font-size: 0.68rem; color: #e57373; margin-top: 6px; background: #fff3f3; padding: 5px 8px; border-radius: 5px;">
-        <i class="fas fa-exclamation-triangle"></i> AI offline: ${err.message}. Showing local response.
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; color: #aaa; margin-top: 6px;">
+        <button class="speaker-btn" onclick="window.speakText('${cleanReplyForSpeaker}', '${selectedLang}')" style="background: none; border: none; color: var(--primary-green); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='none'">
+          <i class="fas fa-volume-up"></i> Listen
+        </button>
+        <span style="color: #e57373;"><i class="fas fa-exclamation-triangle"></i> AI offline: ${err.message}. Showing local response.</span>
       </div>`;
     
     if (typingEl) {
@@ -3349,6 +3412,153 @@ window.calculateIrrigationSchedule = function () {
       </div>
     `;
   }
+
+  resultPanel.innerHTML = outputHtml;
+  resultPanel.style.display = "block";
+};
+
+window.updateNPKDisplay = function () {
+  const nVal = document.getElementById("npk-n")?.value || 0;
+  const pVal = document.getElementById("npk-p")?.value || 0;
+  const kVal = document.getElementById("npk-k")?.value || 0;
+
+  const nDisp = document.getElementById("n-value-display");
+  const pDisp = document.getElementById("p-value-display");
+  const kDisp = document.getElementById("k-value-display");
+
+  if (nDisp) nDisp.textContent = `${nVal} mg/kg`;
+  if (pDisp) pDisp.textContent = `${pVal} mg/kg`;
+  if (kDisp) kDisp.textContent = `${kVal} mg/kg`;
+};
+
+window.calculateNPKRecommendations = function () {
+  const nInput = document.getElementById("npk-n");
+  const pInput = document.getElementById("npk-p");
+  const kInput = document.getElementById("npk-k");
+  const cropSelect = document.getElementById("npk-crop");
+  const acresInput = document.getElementById("npk-acres");
+  const resultPanel = document.getElementById("npk-result-panel");
+
+  if (!nInput || !pInput || !kInput || !cropSelect || !acresInput || !resultPanel) return;
+
+  const nVal = parseFloat(nInput.value);
+  const pVal = parseFloat(pInput.value);
+  const kVal = parseFloat(kInput.value);
+  const crop = cropSelect.value;
+  const acres = parseFloat(acresInput.value) || 1.0;
+
+  const isTamil = currentLang === "ta";
+
+  // Target requirements (kg/acre)
+  const cropNeeds = {
+    paddy: { n: 60, p: 25, k: 25 },
+    cotton: { n: 50, p: 25, k: 25 },
+    tomato: { n: 75, p: 50, k: 50 },
+    sugarcane: { n: 110, p: 50, k: 50 }
+  };
+
+  const needs = cropNeeds[crop] || cropNeeds.paddy;
+
+  // Compute status
+  const nStatus = nVal < 280 ? "deficient" : "optimal";
+  const pStatus = pVal < 23 ? "deficient" : "optimal";
+  const kStatus = kVal < 140 ? "deficient" : "optimal";
+
+  // Calculate N, P, K deficits (kg/acre)
+  const nDeficit = nStatus === "deficient" ? (1 - nVal / 280) * needs.n : 0;
+  const pDeficit = pStatus === "deficient" ? (1 - pVal / 23) * needs.p : 0;
+  const kDeficit = kStatus === "deficient" ? (1 - kVal / 140) * needs.k : 0;
+
+  // Convert to actual fertilizers
+  // 1. DAP (18-46-0) supplies all Phosphorus
+  const dapNeededKg = pDeficit * 2.17 * acres; // 1 / 0.46 = 2.17
+  const dapBags = (dapNeededKg / 50).toFixed(1);
+
+  // Nitrogen supplied by DAP = DAP * 18%
+  const nSuppliedByDap = (dapNeededKg / acres) * 0.18;
+  const netNDeficit = Math.max(0, nDeficit - nSuppliedByDap);
+
+  // 2. Urea (46-0-0) supplies remaining Nitrogen
+  const ureaNeededKg = netNDeficit * 2.17 * acres; // 1 / 0.46 = 2.17
+  const ureaBags = (ureaNeededKg / 50).toFixed(1);
+
+  // 3. MOP (0-0-60) supplies Potassium
+  const mopNeededKg = kDeficit * 1.67 * acres; // 1 / 0.6 = 1.67
+  const mopBags = (mopNeededKg / 50).toFixed(1);
+
+  // Status text translations
+  const nStatusLabel = nStatus === "deficient" ? (isTamil ? "பற்றாக்குறை" : "Deficient") : (isTamil ? "போதுமானது" : "Optimal/High");
+  const pStatusLabel = pStatus === "deficient" ? (isTamil ? "பற்றாக்குறை" : "Deficient") : (isTamil ? "போதுமானது" : "Optimal/High");
+  const kStatusLabel = kStatus === "deficient" ? (isTamil ? "பற்றாக்குறை" : "Deficient") : (isTamil ? "போதுமானது" : "Optimal/High");
+
+  const nColor = nStatus === "deficient" ? "#d32f2f" : "#2e7d32";
+  const pColor = pStatus === "deficient" ? "#1976d2" : "#2e7d32";
+  const kColor = kStatus === "deficient" ? "#f57c00" : "#2e7d32";
+
+  const outputHtml = `
+    <h4 style="color: #2e7d32; font-weight: bold; margin-bottom: 15px; font-size: 1.05rem;">
+      <i class="fas fa-poll-h"></i> ${isTamil ? "மண் ஊட்டச்சத்து பகுப்பாய்வு முடிவு" : "Soil Nutrient Health Analysis"}
+    </h4>
+    
+    <!-- Visual Gauges/Bars -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+      <div style="background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: #555; display: block; margin-bottom: 5px;">Nitrogen (N)</span>
+        <strong style="color: ${nColor}; font-size: 1.1rem;">${nStatusLabel}</strong>
+        <span style="font-size: 0.72rem; color: #777; display: block; margin-top: 3px;">Deficit: ${nDeficit.toFixed(1)} kg/Acre</span>
+      </div>
+      <div style="background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: #555; display: block; margin-bottom: 5px;">Phosphorus (P)</span>
+        <strong style="color: ${pColor}; font-size: 1.1rem;">${pStatusLabel}</strong>
+        <span style="font-size: 0.72rem; color: #777; display: block; margin-top: 3px;">Deficit: ${pDeficit.toFixed(1)} kg/Acre</span>
+      </div>
+      <div style="background: #fafafa; border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: #555; display: block; margin-bottom: 5px;">Potassium (K)</span>
+        <strong style="color: ${kColor}; font-size: 1.1rem;">${kStatusLabel}</strong>
+        <span style="font-size: 0.72rem; color: #777; display: block; margin-top: 3px;">Deficit: ${kDeficit.toFixed(1)} kg/Acre</span>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div style="background: #e8f5e9; border: 1.5px solid #a5d6a7; border-radius: 8px; padding: 20px;">
+      <h5 style="color: #2e7d32; font-size: 0.95rem; font-weight: 700; margin: 0 0 12px 0;">
+        <i class="fas fa-truck-loading"></i> ${isTamil ? "தேவைப்படும் உரங்களின் பட்டியல் (" + acres + " ஏக்கருக்கு):" : "Recommended Fertilizer Bag Quantities (for " + acres + " Acres):"}
+      </h5>
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem; color: #333;">
+        <thead>
+          <tr style="border-bottom: 1.5px solid #a5d6a7; text-align: left; font-weight: bold; color: #1b5e20;">
+            <th style="padding: 8px 5px;">${isTamil ? "உரம்வகை" : "Fertilizer Type"}</th>
+            <th style="padding: 8px 5px; text-align: right;">${isTamil ? "அளவு (மூட்டைகள்)" : "Qty (50kg Bags)"}</th>
+            <th style="padding: 8px 5px; text-align: right;">${isTamil ? "அளவு (கிலோ)" : "Weight (kg)"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #c8e6c9;">
+            <td style="padding: 10px 5px; font-weight: 600;">Urea (46% N)</td>
+            <td style="padding: 10px 5px; text-align: right; font-weight: bold; color: #b71c1c;">${ureaBags} bags</td>
+            <td style="padding: 10px 5px; text-align: right;">${ureaNeededKg.toFixed(0)} kg</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #c8e6c9;">
+            <td style="padding: 10px 5px; font-weight: 600;">DAP (18% N, 46% P)</td>
+            <td style="padding: 10px 5px; text-align: right; font-weight: bold; color: #0d47a1;">${dapBags} bags</td>
+            <td style="padding: 10px 5px; text-align: right;">${dapNeededKg.toFixed(0)} kg</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 5px; font-weight: 600;">MOP / Potash (60% K)</td>
+            <td style="padding: 10px 5px; text-align: right; font-weight: bold; color: #e65100;">${mopBags} bags</td>
+            <td style="padding: 10px 5px; text-align: right;">${mopNeededKg.toFixed(0)} kg</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Organic Suggestion -->
+      <div style="margin-top: 15px; border-top: 1px dashed #a5d6a7; padding-top: 12px; font-size: 0.8rem; color: #1b5e20; line-height: 1.5;">
+        <strong><i class="fas fa-leaf"></i> ${isTamil ? "இயற்கை வழி உரம் மாற்றுக்கள்:" : "Organic Fertilization Alternative Tips:"}</strong><br/>
+        • ${isTamil ? "வேதி உரங்கள் பயன்பாட்டைக் குறைக்க ஏக்கருக்கு 5 டன் தொழு உரம் (Farmyard Manure) இடவும்." : "Apply 5 tons of Farmyard Manure (composted cow dung) per acre to improve organic soil carbon."}<br/>
+        • ${isTamil ? "தழைச்சத்தை அதிகரிக்க அசோஸ்பைரில்லம் மற்றும் பாஸ்போபாக்டீரியா உயிரியல் உரங்களை பயன்படுத்தவும்." : "Inoculate seeds/soil with Azospirillum and Phosphobacteria biofertilizers to increase N & P availability naturally."}
+      </div>
+    </div>
+  `;
 
   resultPanel.innerHTML = outputHtml;
   resultPanel.style.display = "block";
