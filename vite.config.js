@@ -15,12 +15,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: "index.html",
-        crop: "crop.html",
         forum: "forum.html",
         market: "market.html",
         pest: "pest.html",
         schemes: "schemes.html",
         survey: "survey.html",
+        ledger: "ledger.html",
         weather: "weather.html",
       },
     },

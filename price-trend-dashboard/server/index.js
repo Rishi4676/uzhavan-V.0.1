@@ -540,6 +540,85 @@ Example Output:
   }
 });
 
+// AI Crop & Soil Suitability Prediction
+app.post("/api/predict-crops", async (req, res) => {
+  try {
+    const { lat, lng, locationName, soilData, weatherData } = req.body || {};
+
+    if (!lat || !lng || !soilData || !weatherData) {
+      return res.status(400).json({ error: "Missing required coordinates, soil, or weather data" });
+    }
+
+    const prompt = `You are a professional agricultural scientist and agronomist. 
+Analyze the provided coordinates, location name, soil parameters, and real-time weather conditions to recommend the top 3 best crops to plant. 
+Provide a detailed soil description, suitability analysis, and specific farming advice tailored to the location and season.
+
+Location Name: ${locationName || "Not Provided"}
+Location Coordinates: Latitude ${lat}, Longitude ${lng} (in India, determine state/district based on coordinates and location name)
+Soil parameters: Clay: ${soilData.clay}%, Sand: ${soilData.sand}%, Silt: ${soilData.silt}%, pH: ${soilData.ph}
+Weather parameters (Current/Recent): Temp: ${weatherData.temp}°C, Humidity: ${weatherData.humidity}%, Precipitation: ${weatherData.precipitation}mm
+Daily weather summary: Max Temp: ${weatherData.tempMax}°C, Min Temp: ${weatherData.tempMin}°C, Precipitation Sum: ${weatherData.precipitationSum}mm
+
+You must return a JSON response matching the following schema exactly:
+{
+  "textureClass": "Soil texture class (MUST be exactly 'Clayey Soil', 'Sandy Soil', 'Clay Loam', or 'Silty Loam')",
+  "textureDesc": "Detailed soil description and suitability in English",
+  "textureDescTa": "Detailed soil description and suitability in Tamil (தமிழ்)",
+  "phDesc": "Soil pH category (e.g. 'Neutral (Optimal)', 'Slightly Acidic', 'Slightly Alkaline')",
+  "colorName": "Expected soil color in English (e.g. Black Cotton Soil)",
+  "colorNameTa": "Expected soil color in Tamil (e.g. கரிசல் மண்)",
+  "recommendations": [
+    {
+      "nameEn": "Crop name in English (e.g. Paddy (Rice))",
+      "nameTa": "Crop name in Tamil (e.g. நெல்)",
+      "score": 95, // percentage suitability score (0-100)
+      "sowing": {
+        "en": "Optimal sowing window in English",
+        "ta": "Optimal sowing window in Tamil (தமிழ்)"
+      }
+    }
+  ]
+}
+Ensure there are exactly 3 crop recommendations. Be highly accurate for the location (${locationName || "Latitude " + lat + ", Longitude " + lng}) which maps to specific agro-climatic zones in India. Ensure the JSON is well-formed.`;
+
+    let rawReply;
+    let success = false;
+
+    // 1. Try Groq
+    if (GROQ_API_KEY) {
+      try {
+        console.log("Generating AI Crop predictions using Groq...");
+        rawReply = await runGroqPrompt(prompt);
+        success = true;
+      } catch (groqError) {
+        console.warn("Groq crop prediction failed, trying Gemini:", groqError.message);
+      }
+    }
+
+    // 2. Try Gemini
+    if (!success && process.env.GEMINI_API_KEY) {
+      try {
+        console.log("Generating AI Crop predictions using Gemini...");
+        rawReply = await runGeminiPrompt(prompt);
+        success = true;
+      } catch (geminiError) {
+        console.warn("Gemini crop prediction failed:", geminiError.message);
+      }
+    }
+
+    if (success && rawReply) {
+      const parsed = safeParseJSON(rawReply);
+      return res.json(parsed);
+    }
+
+    throw new Error("No AI API key available or call failed.");
+  } catch (error) {
+    console.error("Error predicting crops:", error.message);
+    res.status(500).json({ error: "Failed to predict crops using AI" });
+  }
+});
+
+
 // Build a strong agriculture-focused system prompt
 function buildAgriSystemPrompt(lang) {
   const isTamil = lang === "ta";
@@ -737,13 +816,34 @@ Guidelines:
 
 function safeParseJSON(text) {
   let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```(json)?/, "").replace(/```$/, "").trim();
-  }
+  
+  // 1. Try direct parsing first
   try {
     return JSON.parse(cleaned);
   } catch (e) {
-    console.error("Error parsing JSON content:", e.message, cleaned);
+    // 2. Try to find the markdown code block ```json ... ``` or ``` ... ```
+    const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+      try {
+        return JSON.parse(codeBlockMatch[1].trim());
+      } catch (innerErr) {
+        cleaned = codeBlockMatch[1].trim();
+      }
+    }
+    
+    // 3. Fall back to finding the first '{' and last '}'
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonCandidate = cleaned.substring(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(jsonCandidate);
+      } catch (braceErr) {
+        console.error("Failed to parse braced JSON candidate:", braceErr.message);
+      }
+    }
+    
+    console.error("Error parsing JSON content:", e.message, text);
     throw e;
   }
 }
@@ -751,9 +851,83 @@ function safeParseJSON(text) {
 // Chatbot Endpoint
 app.post("/api/chatbot", async (req, res) => {
   try {
-    const { message, language } = req.body || {};
-    const systemPrompt = buildAgriSystemPrompt(language || "en");
+    const { message, language, context } = req.body || {};
+    
+    // Build context-aware prompt additions
+    let userProfileText = "";
+    let farmTwinText = "";
+    let weatherText = "";
+    const isTamil = language === "ta";
+    
+    if (context) {
+      if (context.user) {
+        userProfileText = `Farmer Profile: Name: ${context.user.full_name || context.user.username || "Arumugam"}, Location: ${context.user.village_name || "Melur"}.`;
+      }
+      if (context.digitalTwin && context.digitalTwin.activeFarm) {
+        const farm = context.digitalTwin.activeFarm;
+        farmTwinText = `Active Farm State: Survey No: ${farm.surveyNo || "N/A"}, Size: ${farm.acres || "N/A"} acres, Soil: ${farm.soilType || "clay"}, Crop: ${farm.crop || "Rice"}, Variety: ${farm.variety || "Ponni"}, Sowing Date: ${farm.sowingDate || "N/A"}, Crop Stage: ${farm.cropStage || "Vegetative"}.`;
+      }
+      if (context.digitalTwin && context.digitalTwin.conditions && context.digitalTwin.conditions.weather) {
+        const w = context.digitalTwin.conditions.weather;
+        weatherText = `Current Weather Conditions: Temp: ${w.temp || "N/A"}°C, Humidity: ${w.relative_humidity_2m || w.humidity || "N/A"}%, Wind: ${w.windSpeed || "N/A"} km/h, Forecast: ${w.forecast3Days || "N/A"}.`;
+      }
+    }
+    
+    // Check if the user is asking "what should I do today?" or "today plan"
+    const lowerMessage = (message || "").toLowerCase();
+    const isPlanQuery = lowerMessage.includes("today") || lowerMessage.includes("இன்னைக்கு") || lowerMessage.includes("innaiku") || lowerMessage.includes("work") || lowerMessage.includes("வேலை");
+    
+    let systemPrompt = "";
+    if (isPlanQuery) {
+      systemPrompt = `You are a respectful and soft-spoken Tamil agricultural copilot assisting a farmer. 
+${userProfileText}
+${farmTwinText}
+${weatherText}
+
+Provide "Today's Farm Plan" as a JSON object inside your response structure.
+Guidelines:
+1. Respond in a warm, respectful Tamil tone (use terms like "அண்ணா", "அக்கா" naturally).
+2. The response must be a JSON object containing:
+   - "reply": 2-4 short sentences in Tamil to be spoken out loud (e.g., "அண்ணா, நாளைக்கு மழை பெய்ய வாய்ப்பு இருப்பதால் இன்னைக்கு தண்ணீர் பாய்ச்ச வேண்டாம். பயிர்களைக் கண்காணித்து வடிகால்களைச் சுத்தம் செய்யுங்கள்.").
+   - "ui": {
+       "title": "TODAY'S PLAN (இன்றைய திட்டம்)",
+       "alerts": ["நாளை மழை பெய்ய வாய்ப்பு உள்ளது"],
+       "plan": [
+         { "priority": "HIGH", "action": "மண் ஈரப்பதத்தை சரிபார்க்கவும்" },
+         { "priority": "MEDIUM", "action": "நீர் வடிகால்களை சுத்தம் செய்யவும்" },
+         { "priority": "LOW", "action": "வழக்கமான பயிர் இலைக் கண்காணிப்பு" }
+       ],
+       "confidence": "HIGH",
+       "source": "Open-Meteo API + local farm configuration",
+       "lastUpdated": "${new Date().toISOString()}"
+     }
+3. Maintain zero-hallucination. Do not suggest chemical pesticide numbers/formulas without details.
+4. Output ONLY the valid JSON object, starting with { and ending with }. Do not add markdown code wraps.`;
+    } else {
+      systemPrompt = `${buildAgriSystemPrompt(language || "en")}
+${userProfileText}
+${farmTwinText}
+${weatherText}
+
+Provide helpful, respectful farming advice in 2-4 short sentences so it can be read aloud cleanly.
+Return a JSON object containing:
+{
+  "reply": "Your conversational answer in Tamil/English"
+}`;
+    }
+
     const prompt = `${systemPrompt}\n\nUser Question: ${message}`;
+
+    // Helper to safely parse and return the response
+    const handleResponse = (aiText) => {
+      let parsed = { reply: aiText };
+      try {
+        parsed = safeParseJSON(aiText);
+      } catch (err) {
+        parsed = { reply: aiText };
+      }
+      return res.json(parsed);
+    };
 
     // 1. Try Groq
     try {
@@ -761,7 +935,7 @@ app.post("/api/chatbot", async (req, res) => {
         console.log("Using Groq for chatbot response...");
         const groqReply = await runGroqPrompt(prompt);
         if (groqReply) {
-          return res.json({ reply: groqReply });
+          return handleResponse(groqReply);
         }
       }
     } catch (groqError) {
@@ -774,25 +948,15 @@ app.post("/api/chatbot", async (req, res) => {
         console.log("Using Gemini for chatbot response...");
         const geminiReply = await runGeminiPrompt(prompt);
         if (geminiReply) {
-          return res.json({ reply: geminiReply });
+          return handleResponse(geminiReply);
         }
       }
     } catch (geminiError) {
       console.warn("Gemini chatbot failed:", geminiError.message);
     }
 
-    // 2. Try Ollama (Local)
-    try {
-      console.log("Using Ollama fallback...");
-      const aiReply = await runOllamaPrompt(prompt);
-      return res.json({
-        reply: aiReply || buildChatbotReply(message, language, null),
-      });
-    } catch (ollamaError) {
-      console.warn("Ollama fallback failed:", ollamaError.message);
-      // 3. Rule-based fallback
-      return res.json({ reply: buildChatbotReply(message, language, null) });
-    }
+    // 3. Fallback to rule-based fallback
+    return res.json({ reply: buildChatbotReply(message, language, null) });
   } catch (error) {
     console.error("Error in chatbot:", error.message);
     res.status(500).json({

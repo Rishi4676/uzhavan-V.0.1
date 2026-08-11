@@ -11,15 +11,38 @@
     <div id="loader"><div class="spinner"></div></div>
 
     <header>
-        <div class="logo"><h1 data-key="title">Smart Farmer Assistant</h1></div>
-        <nav>
-            <ul>
-                <li><a href="index.html" data-key="nav_home">Home</a></li>
-                <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
-                <li><a href="contact.html" data-key="nav_contact">Contact</a></li>
-            </ul>
-        </nav>
-        <button class="lang-switch-btn" onclick="toggleLanguage()" data-key="btn_lang">Tamil</button>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="ledger.html" data-key="nav_ledger">Budget Planner</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
     </header>
 
     <div class="container">

@@ -44,6 +44,7 @@ const translations = {
     ph_password: "Password",
     login_btn: "Login",
     register_link: "Don't have an account? Register",
+    voice_label: "Voice",
     ph_name: "Full Name",
     ph_phone: "Phone Number",
     ph_village: "Village Name",
@@ -117,6 +118,7 @@ const translations = {
     ph_password: "கடவுச்சொல்",
     login_btn: "உள்நுழை",
     register_link: "கணக்கு இல்லையா? பதிவு செய்யவும்",
+    voice_label: "குரல்",
     ph_name: "முழு பெயர்",
     ph_phone: "தொலைபேசி எண்",
     ph_village: "கிராமத்தின் பெயர்",
@@ -243,7 +245,6 @@ const translationDictionary = {
     "வானிலை முன்னறிவிப்பைக் காண இருப்பிடத்தை உள்ளிடவும் அல்லது வரைபடத்தில் கிளிக் செய்யவும்.",
   "7-Day Weather Visualization": "7-நாள் வானிலை வரைபடம்",
   "Rainfall Forecast (mm)": "மழைப்பொழிவு முன்னறிவிப்பு (மி.மீ)",
-  Cloudy: "மேகமூட்டம்",
   "Apparent Temp": "மெய்நிகர் வெப்பநிலை",
   Humidity: "ஈரப்பதம்",
   "Wind Speed": "காற்றின் வேகம்",
@@ -394,7 +395,8 @@ function translateFormElements(targetLang) {
   document
     .querySelectorAll("input[placeholder], textarea[placeholder]")
     .forEach((el) => {
-      const placeholder = el.getAttribute("placeholder").trim();
+      const placeholder = (el.getAttribute("placeholder") || "").trim();
+      if (!placeholder) return;
       if (targetLang === "ta") {
         if (translationDictionary[placeholder]) {
           el.placeholder = translationDictionary[placeholder];
@@ -411,7 +413,8 @@ function translateFormElements(targetLang) {
 
   // Select Dropdown Option texts
   document.querySelectorAll("select option").forEach((el) => {
-    const text = el.innerText.trim();
+    const text = (el.innerText || el.textContent || "").trim();
+    if (!text) return;
     if (targetLang === "ta") {
       if (translationDictionary[text]) {
         el.innerText = translationDictionary[text];
@@ -451,6 +454,11 @@ function toggleLanguage() {
   updateLanguage();
   location.reload();
 }
+
+window.handleChatbotLangChange = function (selectEl) {
+  localStorage.setItem("lang", selectEl.value);
+  location.reload();
+};
 
 // Global dynamic translation helper
 window._t = function (text) {
@@ -590,14 +598,14 @@ window.filterNews = function (tag, btn) {
   feed.innerHTML = filtered
     .map(
       (n) => `
-                <div style="background: #f9fbf8; border: 1px solid #e8f5e9; border-radius: 10px; padding: 20px; transition: all 0.3s ease; display: flex; flex-direction: column; justify-content: space-between; height: 100%;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                <div class="news-card">
                     <div>
-                        <span style="background: ${n.tag === "GOVT" ? "#1565c0" : n.tag === "LIVE" ? "#d32f2f" : "#2e7d32"}; color: white; font-size: 0.65rem; padding: 3px 10px; border-radius: 20px; font-weight: bold; text-transform: uppercase; display: inline-block; margin-bottom: 10px;">${n.tag}</span>
-                        <h4 style="font-size: 0.95rem; color: #333; margin: 0 0 15px 0; line-height: 1.4; font-weight: 600;">${n.title}</h4>
+                        <span class="news-card-tag ${n.tag.toLowerCase()}">${n.tag}</span>
+                        <h4 class="news-card-title">${n.title}</h4>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 12px; margin-top: auto;">
-                        <span style="font-size: 0.75rem; color: #777;"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i>${n.date}</span>
-                        <a href="${n.link}" target="_blank" style="color: #2e7d32; font-size: 0.8rem; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 4px;">${isTamil ? "மேலும் வாசிக்க" : "Read More"} <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i></a>
+                    <div class="news-card-footer">
+                        <span class="news-card-date"><i class="far fa-calendar-alt" style="margin-right: 4px;"></i>${n.date}</span>
+                        <a href="${n.link}" target="_blank" class="news-card-link">${isTamil ? "மேலும் வாசிக்க" : "Read More"} <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i></a>
                     </div>
                 </div>
             `,
@@ -609,6 +617,42 @@ window.filterNews = function (tag, btn) {
 let map, marker, selectedLocation;
 let standardLayer, satelliteLayer, currentLayer;
 let waterLayerGroup;
+let rainChartInstance = null;
+let tempChartInstance = null;
+
+// Farm Digital Twin utility
+window.updateFarmDigitalTwin = function (newData) {
+  let twin = {};
+  try {
+    twin = JSON.parse(localStorage.getItem("farm_digital_twin")) || {};
+  } catch (e) {
+    twin = {};
+  }
+  
+  // Bind farmer data dynamically from active profile
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (user) {
+    twin.farmer = {
+      uid: user.uid,
+      name: user.full_name || user.username,
+      village: user.village_name || "",
+      phone: user.phone_number || ""
+    };
+  }
+  
+  if (newData.activeFarm) {
+    twin.activeFarm = { ...(twin.activeFarm || {}), ...newData.activeFarm };
+  }
+  if (newData.conditions) {
+    twin.conditions = { ...(twin.conditions || {}), ...newData.conditions };
+  }
+  if (newData.history) {
+    twin.history = { ...(twin.history || {}), ...newData.history };
+  }
+  
+  localStorage.setItem("farm_digital_twin", JSON.stringify(twin));
+  console.log("Farm Digital Twin updated:", twin);
+};
 
 // GPS Farm Mapping State
 let isMappingMode = false;
@@ -626,19 +670,25 @@ function initMap() {
   map = L.map("map").setView([11.1271, 78.6569], 7);
 
   standardLayer = L.tileLayer(
-    "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+    "https://mt{s}.google.com/vt/lyrs=m&hl={hl}&scale={scale}&x={x}&y={y}&z={z}",
     {
       subdomains: ["0", "1", "2", "3"],
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      hl: (localStorage.getItem("lang") || "en") === "ta" ? "ta" : "en",
+      scale: 2,
       attribution: "&copy; Google Maps",
     },
   );
 
   satelliteLayer = L.tileLayer(
-    "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    "https://mt{s}.google.com/vt/lyrs=y&hl={hl}&scale={scale}&x={x}&y={y}&z={z}",
     {
       subdomains: ["0", "1", "2", "3"],
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: 18, // Satellite imagery in rural areas often doesn't go beyond 18
+      hl: (localStorage.getItem("lang") || "en") === "ta" ? "ta" : "en",
+      scale: 2,
       attribution: "&copy; Google Maps",
     },
   );
@@ -693,6 +743,8 @@ function initMap() {
     } catch (err) {
       fetchWeather(lat, lng, `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
     }
+
+    fetchSoilAndCropInsights(lat, lng);
   });
 
   // Setup Geocomplete input
@@ -703,6 +755,14 @@ function initMap() {
 }
 
 function updateMarker(lat, lng) {
+  if (typeof window.updateSurveyMarker === "function") {
+    window.updateSurveyMarker(lat, lng);
+    return;
+  }
+  if (!map) {
+    console.warn("Main map is not initialized.");
+    return;
+  }
   if (marker) {
     marker.setLatLng([lat, lng]);
     map.panTo([lat, lng]);
@@ -747,6 +807,20 @@ async function fetchWeather(lat, lon, name) {
     const data = await res.json();
     const cur = data.current;
     const daily = data.daily;
+
+    if (window.updateFarmDigitalTwin) {
+      window.updateFarmDigitalTwin({
+        conditions: {
+          weather: {
+            temp: cur.temperature_2m,
+            humidity: cur.relative_humidity_2m,
+            windSpeed: cur.wind_speed_10m,
+            precipitationSum: daily.precipitation_sum[0],
+            forecast3Days: `Day 1: ${getWeatherDesc(daily.weather_code[0]).desc}, Day 2: ${getWeatherDesc(daily.weather_code[1]).desc}, Day 3: ${getWeatherDesc(daily.weather_code[2]).desc}`
+          }
+        }
+      });
+    }
 
     const weatherInfo = getWeatherDesc(cur.weather_code);
     const rainProb = daily.precipitation_probability_max
@@ -882,8 +956,114 @@ async function fetchWeather(lat, lon, name) {
             })
             .join("")}
         </div>
+        
+        <!-- Action Button for Option 2 Integration -->
+        <button onclick="goToLandSurvey(${lat}, ${lon}, '${name}')" class="btn" style="margin-top: 20px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary-green); color: white; border: none; font-weight: bold; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+          <i class="fas fa-file-contract"></i> 
+          <span>${isTamil ? "இந்த இருப்பிடத்திற்கான நில வரைபடத்தை காண்க" : "View Land Survey for this Location"}</span>
+        </button>
       </div>
     `;
+
+    // Render Weather Charts dynamically using Chart.js
+    const chartsSection = document.getElementById("weather-charts-section");
+    if (chartsSection) {
+      chartsSection.style.display = "block";
+      
+      const rainCtx = document.getElementById("rainChart");
+      const tempCtx = document.getElementById("tempChart");
+      
+      const labels = daily.time.map((t) => {
+        return new Date(t).toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        });
+      });
+      
+      if (rainCtx) {
+        if (rainChartInstance) rainChartInstance.destroy();
+        rainChartInstance = new Chart(rainCtx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [{
+              label: isTamil ? "மழைப்பொழிவு (மிமீ)" : "Rainfall (mm)",
+              data: daily.precipitation_sum,
+              backgroundColor: "rgba(2, 136, 209, 0.6)",
+              borderColor: "#0288d1",
+              borderWidth: 1.5,
+              borderRadius: 4,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "mm",
+                  font: { weight: "bold" }
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      if (tempCtx) {
+        if (tempChartInstance) tempChartInstance.destroy();
+        tempChartInstance = new Chart(tempCtx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: isTamil ? "அதிகபட்ச வெப்பநிலை" : "Max Temp",
+                data: daily.temperature_2m_max,
+                borderColor: "#d32f2f",
+                backgroundColor: "rgba(211, 47, 47, 0.1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3
+              },
+              {
+                label: isTamil ? "குறைந்தபட்ச வெப்பநிலை" : "Min Temp",
+                data: daily.temperature_2m_min,
+                borderColor: "#1565c0",
+                backgroundColor: "rgba(21, 101, 192, 0.1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { font: { weight: "bold" } }
+              }
+            },
+            scales: {
+              y: {
+                title: {
+                  display: true,
+                  text: "°C",
+                  font: { weight: "bold" }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
 
     if (typeof window.checkAndTranslate === "function") {
       window.checkAndTranslate();
@@ -977,15 +1157,29 @@ function setupAutocomplete() {
 
     searchTimeout = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=in`,
+        let response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=in&viewbox=75,8,80.5,14`,
           {
             headers: {
               "Accept-Language": currentLang === "ta" ? "ta" : "en",
             },
           },
         );
-        const data = await response.json();
+        let data = await response.json();
+
+        // Fallback: If no results found, try appending "Tamil Nadu" to help find small rural villages
+        if ((!data || data.length === 0) && !query.toLowerCase().includes("tamil")) {
+          response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Tamil Nadu")}&limit=5&addressdetails=1&countrycodes=in`,
+            {
+              headers: {
+                "Accept-Language": currentLang === "ta" ? "ta" : "en",
+              },
+            },
+          );
+          data = await response.json();
+        }
+
         if (data && data.length > 0) {
           suggestionsDiv.innerHTML = data
             .map((item) => {
@@ -1070,15 +1264,29 @@ async function getWeather() {
   }
 
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=in`,
+    let response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&countrycodes=in&viewbox=75,8,80.5,14`,
       {
         headers: {
           "Accept-Language": currentLang === "ta" ? "ta" : "en",
         },
       },
     );
-    const data = await response.json();
+    let data = await response.json();
+
+    // Fallback: If no results found, try appending "Tamil Nadu" to help find small rural villages
+    if ((!data || data.length === 0) && !query.toLowerCase().includes("tamil")) {
+      response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Tamil Nadu")}&limit=1&addressdetails=1&countrycodes=in`,
+        {
+          headers: {
+            "Accept-Language": currentLang === "ta" ? "ta" : "en",
+          },
+        },
+      );
+      data = await response.json();
+    }
+
     if (data && data.length > 0) {
       const item = data[0];
       const lat = parseFloat(item.lat);
@@ -1099,6 +1307,7 @@ async function getWeather() {
       highlightWaterBodies(lat, lon);
 
       fetchWeather(lat, lon, displayName);
+      fetchSoilAndCropInsights(lat, lon);
     } else {
       if (resultDiv) {
         resultDiv.innerHTML = `<div class="result-card" style="color: #d32f2f; font-weight: bold; padding: 20px;">${currentLang === "ta" ? "இருப்பிடம் கண்டறியப்படவில்லை. தயவுசெய்து எழுத்துப்பிழையைச் சரிபார்க்கவும் அல்லது வரைபடத்தில் தேர்ந்தெடுக்கவும்." : "Location not found. Please check spelling or select on map."}</div>`;
@@ -1698,6 +1907,7 @@ window.startVoice = function () {
   if (!voiceRecognitionInstance) {
     voiceRecognitionInstance = new SpeechRecognition();
     voiceRecognitionInstance.continuous = false;
+    voiceRecognitionInstance.interimResults = true;
 
     voiceRecognitionInstance.onstart = () => {
       const voiceBtn = document.getElementById("chatbot-voice-btn");
@@ -1719,20 +1929,75 @@ window.startVoice = function () {
     };
 
     voiceRecognitionInstance.onresult = (event) => {
-      const text = event.results[0][0].transcript;
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
       const input = document.getElementById("chatbot-input");
       if (input) {
-        input.value = text;
+        if (finalTranscript) {
+          input.value = finalTranscript;
+        } else if (interimTranscript) {
+          input.value = interimTranscript;
+        }
         input.focus();
-        lastInteractionWasVoice = true;
-        window.sendChatbotMessage();
       }
+
+      if (!finalTranscript) return;
+
+      const cleanText = finalTranscript.toLowerCase().trim();
+      const chatbotLang = document.getElementById("chatbot-lang")?.value || "en";
+      const isTamil = chatbotLang === "ta";
+      
+      // Voice action keywords
+      const isSurveyCmd = cleanText.includes("survey") || cleanText.includes("வரைபடம்") || cleanText.includes("நில") || cleanText.includes("patta") || cleanText.includes("chitta") || cleanText.includes("map");
+      const isWeatherCmd = cleanText.includes("weather") || cleanText.includes("வானிலை") || cleanText.includes("மழை") || cleanText.includes("forecast") || cleanText.includes("mazhai");
+      const isMarketCmd = cleanText.includes("market") || cleanText.includes("சந்தை") || cleanText.includes("விலை") || cleanText.includes("price") || cleanText.includes("mandi");
+      const isSchemeCmd = cleanText.includes("scheme") || cleanText.includes("திட்டம்") || cleanText.includes("சலுகை") || cleanText.includes("subsidy");
+      const isHomeCmd = cleanText.includes("home") || cleanText.includes("முகப்பு") || cleanText.includes("dashboard");
+
+      if (isSurveyCmd) {
+        window.speakText(isTamil ? "சரி அண்ணா, நில வரைபட பக்கத்தை திறக்கிறேன்." : "Sure, loading the Land Survey page.", chatbotLang);
+        setTimeout(() => { window.location.href = "survey.html"; }, 2000);
+        return;
+      }
+      if (isWeatherCmd) {
+        window.speakText(isTamil ? "சரி அண்ணா, வானிலை விபரங்களை காட்டுகிறேன்." : "Sure, showing the Weather Forecast.", chatbotLang);
+        setTimeout(() => { window.location.href = "weather.html"; }, 2000);
+        return;
+      }
+      if (isMarketCmd) {
+        window.speakText(isTamil ? "சந்தை விலை நிலவரங்களை காட்டுகிறேன் அண்ணா." : "Loading mandi market prices.", chatbotLang);
+        setTimeout(() => { window.location.href = "market.html"; }, 2000);
+        return;
+      }
+      if (isSchemeCmd) {
+        window.speakText(isTamil ? "வேளாண் சலுகைகள் மற்றும் திட்டங்கள் இதோ." : "Loading government agriculture schemes.", chatbotLang);
+        setTimeout(() => { window.location.href = "schemes.html"; }, 2000);
+        return;
+      }
+      if (isHomeCmd) {
+        window.speakText(isTamil ? "முகப்பு பக்கத்திற்கு செல்கிறேன்." : "Going back to the home page.", chatbotLang);
+        setTimeout(() => { window.location.href = "index.html"; }, 2000);
+        return;
+      }
+
+      // Default: pass query to AI Copilot
+      lastInteractionWasVoice = true;
+      window.sendChatbotMessage();
     };
   }
 
   const chatbotLang = document.getElementById("chatbot-lang")?.value || "en";
   voiceRecognitionInstance.lang =
-    chatbotLang === "ta" ? "ta-IN" : chatbotLang === "hi" ? "hi-IN" : "en-US";
+    chatbotLang === "ta" ? "ta-IN" : chatbotLang === "hi" ? "hi-IN" : "en-IN";
 
   try {
     voiceRecognitionInstance.start();
@@ -1888,6 +2153,7 @@ window.speakText = function (text, lang) {
     .trim();
 
   const utterance = new SpeechSynthesisUtterance(cleanedText);
+  utterance.rate = 1.15;
 
   // Configure language
   if (lang === "ta") {
@@ -1895,7 +2161,7 @@ window.speakText = function (text, lang) {
   } else if (lang === "hi") {
     utterance.lang = "hi-IN";
   } else {
-    utterance.lang = "en-US";
+    utterance.lang = "en-IN";
   }
 
   // Find a voice for the language if possible
@@ -1938,6 +2204,10 @@ window.sendChatbotMessage = async function () {
   const selectedLang = document.getElementById("chatbot-lang")?.value || "en";
   let botReplyHtml = "";
 
+  // Farm Context Engine
+  const userMeta = JSON.parse(localStorage.getItem("user")) || null;
+  const digitalTwin = JSON.parse(localStorage.getItem("farm_digital_twin")) || null;
+
   try {
     const res = await fetch("/api/chatbot", {
       method: "POST",
@@ -1946,7 +2216,11 @@ window.sendChatbotMessage = async function () {
       },
       body: JSON.stringify({
         message: msg,
-        language: selectedLang
+        language: selectedLang,
+        context: {
+          user: userMeta,
+          digitalTwin: digitalTwin
+        }
       })
     });
 
@@ -1967,14 +2241,63 @@ window.sendChatbotMessage = async function () {
     }
 
     const cleanReplyForSpeaker = reply.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, " ");
-    botReplyHtml = `
-      ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
-      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; color: #aaa; margin-top: 6px;">
-        <button class="speaker-btn" onclick="window.speakText('${cleanReplyForSpeaker}', '${selectedLang}')" style="background: none; border: none; color: var(--primary-green); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='none'">
-          <i class="fas fa-volume-up"></i> Listen
-        </button>
-        <span><i class="fas fa-robot"></i> Powered by AgriBot AI</span>
-      </div>`;
+
+    if (data.ui) {
+      const ui = data.ui;
+      let planHtml = "";
+      if (ui.plan && ui.plan.length > 0) {
+        planHtml = `
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+            ${ui.plan.map(p => {
+              const dot = p.priority === "HIGH" ? "🔴" : p.priority === "MEDIUM" ? "🟡" : "🟢";
+              return `<div style="font-size: 0.88rem; color: #333; display: flex; gap: 8px; font-weight: 600; text-align: left;">
+                <span>${dot}</span> <span>${p.action}</span>
+              </div>`;
+            }).join("")}
+          </div>
+        `;
+      }
+      
+      let alertsHtml = "";
+      if (ui.alerts && ui.alerts.length > 0) {
+        alertsHtml = `
+          <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 10px; border-radius: 6px; font-size: 0.8rem; color: #e65100; margin-bottom: 10px; font-weight: bold; text-align: left;">
+            <i class="fas fa-exclamation-triangle"></i> ${ui.alerts.join(", ")}
+          </div>
+        `;
+      }
+      
+      botReplyHtml = `
+        <div style="text-align: left;">
+          <p style="margin: 0 0 10px 0;">${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}</p>
+          <div style="background: #f9fbf8; border: 1.5px solid #e8f5e9; border-radius: 8px; padding: 15px; margin-top: 10px; box-shadow: var(--shadow-sm);">
+            <strong style="color: var(--primary-green); font-size: 0.85rem; display: block; border-bottom: 1px solid #e8f5e9; padding-bottom: 6px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">${ui.title || "FARM DECISION PLAN"}</strong>
+            ${alertsHtml}
+            ${planHtml}
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #888; margin-top: 12px; border-top: 1px dashed #eee; padding-top: 8px;">
+              <span>Confidence: <strong>${ui.confidence || "HIGH"}</strong></span>
+              <span>Source: <strong>${ui.source || "System"}</strong></span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; color: #aaa; margin-top: 6px;">
+            <button class="speaker-btn" onclick="window.speakText('${cleanReplyForSpeaker}', '${selectedLang}')" style="background: none; border: none; color: var(--primary-green); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='none'">
+              <i class="fas fa-volume-up"></i> Listen
+            </button>
+            <span><i class="fas fa-robot"></i> Powered by AgriBot AI</span>
+          </div>
+        </div>
+      `;
+    } else {
+      botReplyHtml = `
+        ${reply.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")}
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; color: #aaa; margin-top: 6px;">
+          <button class="speaker-btn" onclick="window.speakText('${cleanReplyForSpeaker}', '${selectedLang}')" style="background: none; border: none; color: var(--primary-green); cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;" onmouseover="this.style.background='#e8f5e9'" onmouseout="this.style.background='none'">
+            <i class="fas fa-volume-up"></i> Listen
+          </button>
+          <span><i class="fas fa-robot"></i> Powered by AgriBot AI</span>
+        </div>
+      `;
+    }
 
     if (typingEl) {
       typingEl.outerHTML = `
@@ -2068,7 +2391,7 @@ function setupPremiumChatbotUI() {
         </div>
       </div>
       <div class="chatbot-header-actions" style="display: flex; align-items: center; gap: 8px;">
-        <select id="chatbot-lang">
+        <select id="chatbot-lang" onchange="window.handleChatbotLangChange(this)">
           <option value="en" ${currentLang === "en" ? "selected" : ""}>English</option>
           <option value="ta" ${currentLang === "ta" ? "selected" : ""}>Tamil</option>
           <option value="hi" ${currentLang === "hi" ? "selected" : ""}>Hindi</option>
@@ -2098,7 +2421,48 @@ function setupPremiumChatbotUI() {
   }, 100);
 }
 
-// --- 5. INITIALIZATION ---
+// --- 5. USER SESSION HEADER MANAGEMENT ---
+window.renderUserSessionHeader = function () {
+  const navUl = document.querySelector("#main-nav ul");
+  if (!navUl) return;
+
+  let sessionLi = document.getElementById("nav-session-item");
+  if (!sessionLi) {
+    sessionLi = document.createElement("li");
+    sessionLi.id = "nav-session-item";
+    navUl.appendChild(sessionLi);
+  }
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const isTamil = currentLang === "ta";
+
+  if (user) {
+    const name = user.full_name || user.username || "Farmer";
+    sessionLi.innerHTML = `
+      <div class="user-profile-header">
+        <span class="user-avatar">${name.charAt(0).toUpperCase()}</span>
+        <span class="user-name">${name}</span>
+        <a href="#" onclick="logoutUserSession(event)" class="logout-link">(${isTamil ? "வெளியேறு" : "Logout"})</a>
+      </div>
+    `;
+  } else {
+    sessionLi.innerHTML = `
+      <a href="login.html" class="login-nav-btn">
+        <i class="fas fa-sign-in-alt"></i> ${isTamil ? "உள்நுழை" : "Login"}
+      </a>
+    `;
+  }
+};
+
+window.logoutUserSession = function (event) {
+  event.preventDefault();
+  localStorage.removeItem("user");
+  localStorage.removeItem("farm_digital_twin");
+  alert(currentLang === "ta" ? "வெற்றிகரமாக வெளியேற்றப்பட்டது!" : "Logged out successfully!");
+  window.location.href = "login.html";
+};
+
+// --- 6. INITIALIZATION ---
 window.addEventListener("DOMContentLoaded", () => {
   const loader = document.getElementById("loader");
   if (loader) {
@@ -2111,6 +2475,34 @@ window.addEventListener("DOMContentLoaded", () => {
   initMap();
   setupPremiumChatbotUI();
   fetchRealAgriNews();
+  window.renderUserSessionHeader();
+
+  // Option 2 integration: check for shared location from survey.html
+  const shared = localStorage.getItem('sharedLocation');
+  if (shared) {
+    try {
+      const { lat, lon, name } = JSON.parse(shared);
+      localStorage.removeItem('sharedLocation');
+      
+      // Auto-load weather forecast and update marker
+      setTimeout(() => {
+        if (typeof updateMarker === "function") {
+          updateMarker(lat, lon);
+        }
+        if (typeof highlightWaterBodies === "function") {
+          highlightWaterBodies(lat, lon);
+        }
+        if (typeof fetchWeather === "function") {
+          fetchWeather(lat, lon, name);
+        }
+        
+        const input = document.getElementById("location-input");
+        if (input) input.value = name;
+      }, 500);
+    } catch (e) {
+      console.error("Failed to parse shared location:", e);
+    }
+  }
 
   setInterval(() => {
     const clockEl = document.getElementById("live-clock");
@@ -2193,11 +2585,18 @@ function handleMappingClick(lat, lng) {
       `${hectares.toFixed(2)} ha`;
 
     document.getElementById("save-field-box").style.display = "block";
+    
+    // Trigger soil analysis
+    const center = getPolygonCenter(tempPoints);
+    fetchSoilAndCropInsights(center.lat, center.lng);
   } else {
     document.getElementById("measurement-area-sqm").innerText = "0 sq.m";
     document.getElementById("measurement-area-acres").innerText = "0.00 Acres";
     document.getElementById("measurement-area-hectares").innerText = "0.00 ha";
     document.getElementById("save-field-box").style.display = "none";
+    
+    const panel = document.getElementById("soil-advisory-panel");
+    if (panel) panel.style.display = "none";
   }
 }
 
@@ -2244,9 +2643,497 @@ function clearCurrentMapping() {
   document.getElementById("save-field-box").style.display = "none";
   document.getElementById("clear-points-btn").style.display = "none";
 
+  // Hide Soil Advisory
+  const panel = document.getElementById("soil-advisory-panel");
+  if (panel) panel.style.display = "none";
+
   if (isMappingMode) {
     toggleDrawMode(); // Exit mapping mode
   }
+}
+
+// ===================== SMART SOIL & CROP INSIGHTS LOGIC =====================
+
+function getPolygonCenter(points) {
+  let latSum = 0;
+  let lngSum = 0;
+  points.forEach((p) => {
+    latSum += p[0];
+    lngSum += p[1];
+  });
+  return {
+    lat: latSum / points.length,
+    lng: lngSum / points.length,
+  };
+}
+
+async function fetchSoilAndCropInsights(lat, lng, locationName = "") {
+  const panel = document.getElementById("soil-advisory-panel");
+  if (!panel) return;
+  panel.style.display = "block";
+  
+  const content = document.getElementById("soil-advisory-content");
+  if (content) {
+    content.innerHTML = `
+      <div style="text-align: center; padding: 20px 0; color: #666;">
+        <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--primary-green); margin-bottom: 10px;"></i>
+        <p style="font-size: 0.85rem; margin: 0;">Analyzing soil & fetching real-time weather...</p>
+      </div>
+    `;
+  }
+
+  // Resolve location name if not provided
+  if (!locationName) {
+    try {
+      locationName = await reverseGeocode(lat, lng);
+    } catch (e) {
+      locationName = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+    }
+  }
+
+  // 1. Fetch Soil Data (with timeout)
+  let soilData = null;
+  const soilController = new AbortController();
+  const soilTimeoutId = setTimeout(() => soilController.abort(), 3500);
+
+  try {
+    const url = `https://rest.isric.org/soilgrids/v2.0/properties/query?lon=${lng}&lat=${lat}&property=clay&property=sand&property=silt&property=phh2o&depth=0-5cm&value=mean`;
+    const res = await fetch(url, { signal: soilController.signal });
+    clearTimeout(soilTimeoutId);
+    
+    if (res.ok) {
+      const json = await res.json();
+      const clayMean = extractSoilGridsValue(json, 'clay') / 10;
+      const sandMean = extractSoilGridsValue(json, 'sand') / 10;
+      const siltMean = extractSoilGridsValue(json, 'silt') / 10;
+      const phMean = extractSoilGridsValue(json, 'phh2o') / 10;
+      
+      if (clayMean > 0 && sandMean > 0) {
+        soilData = {
+          clay: Math.round(clayMean),
+          sand: Math.round(sandMean),
+          silt: Math.round(siltMean),
+          ph: parseFloat(phMean.toFixed(1))
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("SoilGrids API failed/timed out. Using regional soil estimation.");
+  } finally {
+    clearTimeout(soilTimeoutId);
+  }
+
+  if (!soilData) {
+    soilData = estimateSoilByCoordinates(lat, lng);
+  }
+
+  // 2. Fetch Weather Data (with timeout)
+  let weatherData = { temp: 28, humidity: 70, precipitation: 0, tempMax: 32, tempMin: 24, precipitationSum: 0 };
+  const weatherController = new AbortController();
+  const weatherTimeoutId = setTimeout(() => weatherController.abort(), 3000);
+
+  try {
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`;
+    const res = await fetch(weatherUrl, { signal: weatherController.signal });
+    clearTimeout(weatherTimeoutId);
+    if (res.ok) {
+      const wJson = await res.json();
+      weatherData = {
+        temp: wJson.current.temperature_2m,
+        humidity: wJson.current.relative_humidity_2m,
+        precipitation: wJson.current.precipitation,
+        tempMax: wJson.daily.temperature_2m_max[0],
+        tempMin: wJson.daily.temperature_2m_min[0],
+        precipitationSum: wJson.daily.precipitation_sum[0]
+      };
+    }
+  } catch (err) {
+    console.warn("Weather API failed/timed out for crop insights. Using seasonal defaults.");
+  } finally {
+    clearTimeout(weatherTimeoutId);
+  }
+
+  // 3. Request AI Predictions from backend
+  try {
+    if (content) {
+      content.innerHTML = `
+        <div style="text-align: center; padding: 20px 0; color: #666;">
+          <i class="fas fa-brain fa-spin" style="font-size: 1.5rem; color: var(--primary-green); margin-bottom: 10px;"></i>
+          <p style="font-size: 0.85rem; margin: 0;">Generating accurate AI predictions...</p>
+        </div>
+      `;
+    }
+
+    const aiRes = await fetch("/api/predict-crops", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lng, locationName, soilData, weatherData })
+    });
+
+    if (aiRes.ok) {
+      const analysis = await aiRes.json();
+      // Ensure local coordinates and composition values are merged in case the LLM returned different ones or skipped them
+      analysis.clay = soilData.clay;
+      analysis.sand = soilData.sand;
+      analysis.silt = soilData.silt;
+      analysis.ph = soilData.ph;
+      
+      renderSoilResults(analysis);
+
+      // Auto-scroll to prediction panel below the map
+      setTimeout(() => {
+        const targetPanel = document.getElementById("soil-advisory-panel");
+        if (targetPanel) {
+          targetPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+      return;
+    }
+  } catch (err) {
+    console.warn("AI Crop prediction failed. Falling back to local rule-based model:", err);
+  }
+
+  // 4. Fallback to local rule-based model
+  const analysis = analyzeSoilSuitability(soilData, lat, lng);
+  renderSoilResults(analysis);
+
+  // Auto-scroll to prediction panel below the map
+  setTimeout(() => {
+    const targetPanel = document.getElementById("soil-advisory-panel");
+    if (targetPanel) {
+      targetPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, 100);
+}
+
+function extractSoilGridsValue(json, propName) {
+  try {
+    const layers = json.properties.layers;
+    const layer = layers.find(l => l.name === propName);
+    return layer.depths[0].values.mean;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function estimateSoilByCoordinates(lat, lng) {
+  let clay = 30;
+  let sand = 40;
+  let silt = 30;
+  let ph = 6.8;
+
+  // Regional mapping inside India
+  if (lat >= 8.0 && lat <= 13.5 && lng >= 76.0 && lng <= 80.5) {
+    // Tamil Nadu
+    if (lat >= 10.0 && lat <= 11.2 && lng >= 78.5 && lng <= 79.8) {
+      clay = 52;
+      silt = 32;
+      sand = 16;
+      ph = 7.2;
+    } else if (lat <= 10.0) {
+      clay = 18;
+      silt = 22;
+      sand = 60;
+      ph = 6.2;
+    } else {
+      clay = 28;
+      silt = 27;
+      sand = 45;
+      ph = 6.5;
+    }
+  } else if (lat >= 15.0 && lat <= 22.0 && lng >= 73.0 && lng <= 80.0) {
+    // Deccan (Black cotton soil)
+    clay = 55;
+    silt = 25;
+    sand = 20;
+    ph = 7.8;
+  } else if (lat >= 24.0 && lat <= 30.0 && lng >= 69.0 && lng <= 76.0) {
+    // Rajasthan (Sandy soil)
+    clay = 8;
+    silt = 12;
+    sand = 80;
+    ph = 8.1;
+  } else if (lat >= 25.0 && lat <= 31.0 && lng >= 74.0 && lng <= 88.0) {
+    // Gangetic plain
+    clay = 22;
+    silt = 48;
+    sand = 30;
+    ph = 7.4;
+  }
+
+  return { clay, sand, silt, ph };
+}
+
+function analyzeSoilSuitability(soil, lat, lng) {
+  const { clay, sand, silt, ph } = soil;
+  let textureClass = "Loam";
+  let textureDesc = "Medium loam, good drainage and nutrients.";
+  let colorName = "Alluvial Red/Brown Loam";
+  
+  if (clay > 40) {
+    textureClass = "Clayey Soil";
+    textureDesc = "Heavy soil, high water retention, rich in nutrients but poorly drained.";
+    colorName = "Black Cotton / Heavy Clay";
+  } else if (sand > 50) {
+    textureClass = "Sandy Soil";
+    textureDesc = "Light soil, excellent drainage but poor water/nutrient retention.";
+    colorName = "Red Sandy Soil / Desert Sand";
+  } else if (clay >= 20 && clay <= 40 && silt >= 20 && silt <= 40) {
+    textureClass = "Clay Loam";
+    textureDesc = "Highly fertile soil, balanced drainage and water retention.";
+    colorName = "Alluvial Clay Loam";
+  } else if (silt > 40) {
+    textureClass = "Silty Loam";
+    textureDesc = "Rich, soapy feel, very fertile, holds water well.";
+    colorName = "River Basin Silt";
+  }
+
+  let phDesc = "Neutral";
+  if (ph < 5.5) phDesc = "Strongly Acidic";
+  else if (ph >= 5.5 && ph < 6.5) phDesc = "Slightly Acidic";
+  else if (ph >= 6.5 && ph <= 7.5) phDesc = "Neutral (Optimal)";
+  else if (ph > 7.5 && ph <= 8.5) phDesc = "Slightly Alkaline";
+  else if (ph > 8.5) phDesc = "Strongly Alkaline";
+
+  const cropsDb = [
+    {
+      nameEn: "Paddy (Rice)",
+      nameTa: "நெல் (Rice)",
+      clayWeight: 0.9,
+      sandWeight: 0.1,
+      phMin: 5.5,
+      phMax: 7.5,
+      optimalSowing: {
+        en: "Kharif: June - July | Rabi: Oct - Nov",
+        ta: "காரிஃப்: ஜூன் - ஜூலை | ரபி: அக் - நவ"
+      }
+    },
+    {
+      nameEn: "Cotton",
+      nameTa: "பருத்தி (Cotton)",
+      clayWeight: 0.8,
+      sandWeight: 0.3,
+      phMin: 6.0,
+      phMax: 8.2,
+      optimalSowing: {
+        en: "Kharif: May - June",
+        ta: "காரிஃப்: மே - ஜூன்"
+      }
+    },
+    {
+      nameEn: "Groundnut",
+      nameTa: "நிலக்கடலை (Groundnut)",
+      clayWeight: 0.2,
+      sandWeight: 0.8,
+      phMin: 6.0,
+      phMax: 7.0,
+      optimalSowing: {
+        en: "Kharif: June - July | Rabi: Nov - Dec",
+        ta: "காரிஃப்: ஜூன் - ஜூலை | ரபி: நவ - டிச"
+      }
+    },
+    {
+      nameEn: "Sugarcane",
+      nameTa: "கரும்பு (Sugarcane)",
+      clayWeight: 0.7,
+      sandWeight: 0.4,
+      phMin: 6.5,
+      phMax: 7.8,
+      optimalSowing: {
+        en: "Year-round / Jan - Feb",
+        ta: "ஆண்டு முழுவதும் / ஜன - பிப்"
+      }
+    },
+    {
+      nameEn: "Maize (Corn)",
+      nameTa: "சோளம் (Maize)",
+      clayWeight: 0.5,
+      sandWeight: 0.5,
+      phMin: 5.8,
+      phMax: 7.5,
+      optimalSowing: {
+        en: "Kharif: June - July | Rabi: Oct - Nov",
+        ta: "காரிஃப்: ஜூன் - ஜூலை | ரபி: அக் - நவ"
+      }
+    },
+    {
+      nameEn: "Millets (Ragi/Bajra)",
+      nameTa: "சிறுதானியங்கள் (Millets)",
+      clayWeight: 0.1,
+      sandWeight: 0.9,
+      phMin: 5.5,
+      phMax: 8.0,
+      optimalSowing: {
+        en: "Kharif: July - August",
+        ta: "காரிஃப்: ஜூலை - ஆகஸ்ட்"
+      }
+    }
+  ];
+
+  const recommendations = cropsDb.map(crop => {
+    let textureScore = 0;
+    if (textureClass === "Clayey Soil") {
+      textureScore = crop.clayWeight * 100;
+    } else if (textureClass === "Sandy Soil") {
+      textureScore = crop.sandWeight * 100;
+    } else if (textureClass === "Clay Loam") {
+      textureScore = (crop.clayWeight * 0.7 + (1 - crop.sandWeight) * 0.3) * 100;
+    } else {
+      textureScore = 85;
+    }
+
+    let phScore = 100;
+    if (ph < crop.phMin) {
+      phScore = Math.max(0, 100 - (crop.phMin - ph) * 40);
+    } else if (ph > crop.phMax) {
+      phScore = Math.max(0, 100 - (ph - crop.phMax) * 40);
+    }
+
+    const totalScore = Math.round((textureScore * 0.6) + (phScore * 0.4));
+    return {
+      nameEn: crop.nameEn,
+      nameTa: crop.nameTa,
+      score: totalScore,
+      sowing: crop.optimalSowing
+    };
+  });
+
+  recommendations.sort((a, b) => b.score - a.score);
+
+  return {
+    clay,
+    sand,
+    silt,
+    ph,
+    phDesc,
+    textureClass,
+    textureDesc,
+    colorName,
+    recommendations
+  };
+}
+
+function renderSoilResults(analysis) {
+  const content = document.getElementById("soil-advisory-content");
+  if (!content) return;
+
+  const currentLang = localStorage.getItem("lang") || "en";
+  const isTamil = currentLang === "ta";
+
+  const clayLbl = isTamil ? "களிமண் (Clay)" : "Clay";
+  const sandLbl = isTamil ? "மணல் (Sand)" : "Sand";
+  const siltLbl = isTamil ? "வண்டல் (Silt)" : "Silt";
+  const textureLbl = isTamil ? "மண் வகை" : "Soil Texture";
+  const phLbl = isTamil ? "மண் pH அளவு" : "Soil pH";
+  const cropRecsLbl = isTamil ? "பரிந்துரைக்கப்படும் பயிர்கள்" : "Recommended Crops";
+  const sowingLbl = isTamil ? "உகந்த காலம்" : "Planting Window";
+  const matchLbl = isTamil ? "பொருத்தம்" : "Match";
+
+  let recsHtml = "";
+  analysis.recommendations.forEach((rec, idx) => {
+    const cropName = isTamil ? rec.nameTa : rec.nameEn;
+    const sowingTime = isTamil ? rec.sowing.ta : rec.sowing.en;
+    const badgeColor = rec.score >= 80 ? "#2e7d32" : rec.score >= 60 ? "#f57c00" : "#d32f2f";
+    
+    if (idx < 3) {
+      recsHtml += `
+        <div style="background: #f9fbf8; border: 1px solid #e8f5e9; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: #24292f; font-size: 0.92rem;"><i class="fas fa-leaf" style="color: #4caf50; margin-right: 4px;"></i> ${cropName}</strong>
+            <span style="background: ${badgeColor}; color: white; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 20px;">${rec.score}% ${matchLbl}</span>
+          </div>
+          <div style="font-size: 0.78rem; color: #57606a; display: flex; align-items: center; gap: 4px;">
+            <i class="far fa-calendar-alt"></i> <strong>${sowingLbl}:</strong> ${sowingTime}
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  const soilClassText = isTamil && analysis.textureClass === "Clayey Soil" ? "களிமண் நிலம்" : 
+                       isTamil && analysis.textureClass === "Sandy Soil" ? "மணல் நிலம்" : 
+                       isTamil && analysis.textureClass === "Clay Loam" ? "களிமண் கலந்த வண்டல்" : 
+                       analysis.textureClass;
+
+  const phDescText = isTamil && analysis.phDesc === "Neutral (Optimal)" ? "நடுநிலை (மிகச்சிறந்தது)" : 
+                     isTamil && analysis.phDesc === "Slightly Acidic" ? "சற்று அமிலத்தன்மை" : 
+                     isTamil && analysis.phDesc === "Slightly Alkaline" ? "சற்று காரத்தன்மை" : 
+                     analysis.phDesc;
+
+  const colorText = isTamil && analysis.colorNameTa ? analysis.colorNameTa : analysis.colorName;
+  const descText = isTamil && analysis.textureDescTa ? analysis.textureDescTa : analysis.textureDesc;
+
+  content.innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+      
+      <!-- Left Column: Soil Info -->
+      <div style="display: flex; flex-direction: column; gap: 15px;">
+        <!-- Soil Type and pH Overview -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="background: #f1f8e9; border: 1px solid #c8e6c9; border-radius: 8px; padding: 12px; text-align: center;">
+            <span style="font-size: 0.75rem; color: #2e7d32; font-weight: 700; text-transform: uppercase; display: block;">${textureLbl}</span>
+            <strong style="font-size: 1rem; color: #1b5e20; display: block; margin-top: 4px;">${soilClassText}</strong>
+            <span style="font-size: 0.78rem; color: #555; display: block; margin-top: 2px;">${colorText}</span>
+          </div>
+          <div style="background: #f1f8e9; border: 1px solid #c8e6c9; border-radius: 8px; padding: 12px; text-align: center;">
+            <span style="font-size: 0.75rem; color: #2e7d32; font-weight: 700; text-transform: uppercase; display: block;">${phLbl}</span>
+            <strong style="font-size: 1.2rem; color: #1b5e20; display: block; margin-top: 4px;">${analysis.ph}</strong>
+            <span style="font-size: 0.78rem; color: #555; display: block; margin-top: 2px;">${phDescText}</span>
+          </div>
+        </div>
+
+        <!-- Soil Composition Progress Bars -->
+        <div style="background: #ffffff; border: 1px solid #eee; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-size: 0.75rem; color: #666; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 4px;">Soil Composition</span>
+          
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #333; margin-bottom: 2px;">
+              <span>${clayLbl}</span>
+              <span>${analysis.clay}%</span>
+            </div>
+            <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+              <div style="width: ${analysis.clay}%; height: 100%; background: #795548; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #333; margin-bottom: 2px;">
+              <span>${sandLbl}</span>
+              <span>${analysis.sand}%</span>
+            </div>
+            <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+              <div style="width: ${analysis.sand}%; height: 100%; background: #ffcc80; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #333; margin-bottom: 2px;">
+              <span>${siltLbl}</span>
+              <span>${analysis.silt}%</span>
+            </div>
+            <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+              <div style="width: ${analysis.silt}%; height: 100%; background: #4caf50; border-radius: 3px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: #57606a; margin: 0; line-height: 1.5; font-style: italic; background: #fafafa; padding: 12px; border-radius: 8px; border-left: 4px solid #81c784;">
+          ${descText}
+        </p>
+      </div>
+
+      <!-- Right Column: Recommended Crops -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <h5 style="color: #24292f; font-size: 0.95rem; font-weight: 700; margin: 0 0 4px 0; display: flex; align-items: center; gap: 6px;">
+          <i class="fas fa-award" style="color: #f57c00;"></i> ${cropRecsLbl}
+        </h5>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          ${recsHtml}
+        </div>
+      </div>
+
+    </div>
+  `;
 }
 
 function saveCurrentField() {
@@ -2430,6 +3317,9 @@ function loadSavedFields() {
 // ===================== AGRICULTURAL IMAGES GALLERY & WATER BODY HIGHLIGHTS =====================
 
 async function highlightWaterBodies(lat, lon) {
+  if (typeof window.highlightWaterBodies === "function" && window.highlightWaterBodies !== highlightWaterBodies) {
+    return window.highlightWaterBodies(lat, lon);
+  }
   if (!waterLayerGroup) return;
   waterLayerGroup.clearLayers();
 
@@ -3882,26 +4772,33 @@ window.updateDailyAdvisory = function () {
     day: "numeric",
   });
 
+  const typeClasses = {
+    water: "tip-water",
+    fertilizer: "tip-fertilizer",
+    pest: "tip-pest",
+    climate: "tip-climate",
+  };
+
   display.innerHTML = `
-    <div style="margin-bottom: 10px; font-size: 0.78rem; color: #888; display: flex; align-items: center; gap: 5px;">
-      <i class="far fa-calendar-alt" style="color: var(--primary-green);"></i>
+    <div class="advisory-date">
+      <i class="far fa-calendar-alt"></i>
       ${dateStr}
     </div>
-    <div style="display: grid; gap: 10px;">
+    <div class="advisory-list">
       ${data.tips
         .map(
           (tip) => `
-        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: ${typeBg[tip.type] || "#f9fbf8"}; border-radius: 8px; border-left: 3px solid ${typeColors[tip.type] || "#4caf50"};">
-          <i class="${tip.icon}" style="color: ${typeColors[tip.type] || "#4caf50"}; margin-top: 2px; min-width: 14px;"></i>
-          <span style="font-size: 0.8rem; color: #333; line-height: 1.5;">${tip.text}</span>
+        <div class="advisory-tip-card ${typeClasses[tip.type] || "tip-general"}">
+          <i class="${tip.icon}"></i>
+          <span>${tip.text}</span>
         </div>
       `,
         )
         .join("")}
     </div>
-    <div style="margin-top: 12px; padding: 10px; background: #fffde7; border-radius: 8px; border: 1px solid #fff176; font-size: 0.78rem; color: #f57f17; display: flex; align-items: center; gap: 7px;">
+    <div class="advisory-weather-tip">
       <i class="fas fa-cloud-sun"></i>
-      <strong>Weather Tip:</strong>&nbsp;${data.weather_tip}
+      <span><strong>Weather Tip:</strong>&nbsp;${data.weather_tip}</span>
     </div>
   `;
 };
@@ -4005,14 +4902,14 @@ function loadMarketPulse() {
     .map((c) => {
       const isUp = c.change >= 0;
       return `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px dashed #f0f0f0;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 1.1rem;">${c.icon}</span>
-          <span style="font-size: 0.82rem; font-weight: 600; color: #333;">${c.name}</span>
+      <div class="market-pulse-item">
+        <div class="market-pulse-info">
+          <span class="market-pulse-icon">${c.icon}</span>
+          <span class="market-pulse-name">${c.name}</span>
         </div>
-        <div style="text-align: right;">
-          <div style="font-size: 0.88rem; font-weight: 800; color: #1b5e20;">₹${c.price.toLocaleString()}<span style="font-size: 0.65rem; font-weight: 500; color: #888;">  /${c.unit}</span></div>
-          <div style="font-size: 0.72rem; font-weight: 700; color: ${isUp ? "#2e7d32" : "#c62828"};">
+        <div class="market-pulse-pricing">
+          <div class="market-pulse-price">₹${c.price.toLocaleString()}<span class="market-pulse-unit"> /${c.unit}</span></div>
+          <div class="market-pulse-change ${isUp ? "up" : "down"}">
             ${isUp ? "▲" : "▼"} ₹${Math.abs(c.change)} ${isUp ? (isTamil ? "உயர்வு" : "UP") : isTamil ? "சரிவு" : "DOWN"}
           </div>
         </div>
@@ -4175,14 +5072,14 @@ function loadHomeAlerts() {
   el.innerHTML = alerts
     .map(
       (a) => `
-    <div style="display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; margin-bottom: 9px; background: ${a.bg}; border-radius: 8px; border-left: 3px solid ${a.color};">
-      <i class="${a.icon}" style="color: ${a.color}; margin-top: 2px; min-width: 14px;"></i>
+    <div class="alert-item severity-${a.severity.toLowerCase()}">
+      <i class="${a.icon} alert-icon severity-${a.severity.toLowerCase()}"></i>
       <div>
-        <div style="font-size: 0.8rem; font-weight: 700; color: #333; display: flex; align-items: center; gap: 7px;">
+        <div class="alert-title">
           ${a.title}
-          <span style="font-size: 0.65rem; background: ${a.color}; color: white; padding: 2px 7px; border-radius: 10px; font-weight: 700;">${a.severity}</span>
+          <span class="alert-badge severity-${a.severity.toLowerCase()}">${a.severity}</span>
         </div>
-        <div style="font-size: 0.75rem; color: #555; margin-top: 3px; line-height: 1.4;">${a.desc}</div>
+        <div class="alert-desc">${a.desc}</div>
       </div>
     </div>
   `,
@@ -4370,6 +5267,12 @@ window.toggleDrawMode = toggleDrawMode;
 window.clearCurrentMapping = clearCurrentMapping;
 window.saveCurrentField = saveCurrentField;
 window.getWeather = getWeather;
+window.fetchWeather = fetchWeather;
+window.reverseGeocode = reverseGeocode;
+window.goToLandSurvey = function(lat, lon, name) {
+  localStorage.setItem('sharedLocation', JSON.stringify({ lat, lon, name }));
+  window.location.href = 'survey.html';
+};
 
 // Auto-load dashboard sections on home page
 document.addEventListener("DOMContentLoaded", async () => {
@@ -4384,4 +5287,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.updateDailyAdvisory();
   }
 
+  // Load the interactive farmer assistant globally
+  if (typeof window !== "undefined") {
+    const script = document.createElement("script");
+    script.src = "js/farmer.js";
+    document.body.appendChild(script);
+  }
 });

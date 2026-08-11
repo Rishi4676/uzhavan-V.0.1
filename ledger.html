@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-key="nav_ledger">Budget Planner</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Page-specific premium styles */
+      .ledger-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 30px;
+        margin-top: 25px;
+      }
+      @media (max-width: 992px) {
+        .ledger-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .ledger-card {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius);
+        padding: 25px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: var(--transition);
+      }
+      .ledger-card:hover {
+        box-shadow: var(--shadow-lg);
+      }
+      .section-title {
+        color: var(--primary-green);
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e8f5e9;
+        padding-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      /* Sync Inputs & Sliders styling */
+      .input-sync-group {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        margin-top: 5px;
+      }
+      .input-sync-group input[type="range"] {
+        flex: 1;
+        accent-color: var(--primary-green);
+        height: 6px;
+        border-radius: 3px;
+        background: #ddd;
+        outline: none;
+      }
+      .input-sync-group input[type="number"] {
+        width: 120px;
+        height: 38px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1.5px solid #ccc;
+        font-size: 0.95rem;
+        text-align: right;
+        outline: none;
+      }
+      /* Dashboard Metrics Cards */
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 25px;
+      }
+      .metric-mini-card {
+        background: white;
+        border: 1px solid #e8f5e9;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .metric-mini-card.full-width {
+        grid-column: span 2;
+      }
+      .metric-label {
+        font-size: 0.8rem;
+        color: #666;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .metric-value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #333;
+      }
+      .profit-color {
+        color: #2e7d32 !important;
+      }
+      .loss-color {
+        color: #c62828 !important;
+      }
+      /* Sentiments */
+      .sentiment-badge {
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-top: 4px;
+        text-align: center;
+        max-width: fit-content;
+      }
+      .sentiment-badge.bullish {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+      }
+      .sentiment-badge.bearish {
+        background-color: #ffebee;
+        color: #c62828;
+      }
+      /* AI Advice Area */
+      .advice-panel {
+        margin-top: 25px;
+        background: #f9fbf9;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px dashed #b2dfdb;
+      }
+      .advice-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      .advice-item {
+        font-size: 0.88rem;
+        padding: 10px 14px;
+        border-radius: 8px;
+        line-height: 1.5;
+        border-left: 4px solid #ccc;
+      }
+      .advice-success {
+        background: #e8f5e9;
+        border-left-color: #2e7d32;
+        color: #1b5e20;
+      }
+      .advice-warning {
+        background: #fff3e0;
+        border-left-color: #ff9800;
+        color: #e65100;
+      }
+      .advice-danger {
+        background: #ffebee;
+        border-left-color: #f44336;
+        color: #c62828;
+      }
+      .advice-info {
+        background: #e0f2f1;
+        border-left-color: #009688;
+        color: #004d40;
+      }
+      /* Charts Container */
+      .charts-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-top: 25px;
+      }
+      .chart-wrapper {
+        background: white;
+        border: 1px solid #e8f5e9;
+        border-radius: 10px;
+        padding: 15px;
+        height: 260px;
+        position: relative;
+      }
+      /* History Section */
+      .history-card {
+        margin-top: 30px;
+        overflow-x: auto;
+      }
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 0.9rem;
+      }
+      .history-table th, .history-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+      }
+      .history-table th {
+        background: #f1f8e9;
+        color: #333;
+        font-weight: 700;
+      }
+      .btn-history-action {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        font-size: 1rem;
+        transition: var(--transition);
+        border-radius: 4px;
+      }
+      .btn-history-load {
+        color: var(--primary-green);
+      }
+      .btn-history-load:hover {
+        background: #e8f5e9;
+      }
+      .btn-history-delete {
+        color: #d32f2f;
+      }
+      .btn-history-delete:hover {
+        background: #ffebee;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Global Page Background Video -->
+    <video autoplay loop muted playsinline class="page-bg-video">
+      <source src="/images/background.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <header>
+      <div class="logo">
+        <h1 data-key="title">Smart Farmer Assistant</h1>
+      </div>
+      <button
+        class="hamburger"
+        id="hamburger-btn"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle menu"
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="main-nav">
+        <ul>
+          <li><a href="index.html" data-key="nav_home">Home</a></li>
+          <li><a href="weather.html" data-key="nav_weather">Weather</a></li>
+          <li><a href="survey.html" data-key="nav_survey">Land Survey</a></li>
+          <li><a href="forum.html" data-key="nav_forum">Forum</a></li>
+          <li><a href="market.html" data-key="nav_market">Market</a></li>
+          <li>
+            <a href="pest.html" data-key="nav_pest">Pest &amp; Disease</a>
+          </li>
+          <li><a href="schemes.html" data-key="nav_schemes">Schemes</a></li>
+          <li><a href="ledger.html" class="active" data-key="nav_ledger">Budget Planner</a></li>
+        </ul>
+      </nav>
+      <button
+        class="lang-switch-btn"
+        onclick="toggleLanguage()"
+        data-key="btn_lang"
+      >
+        Tamil
+      </button>
+    </header>
+
+    <div class="container">
+      <h2 style="color: var(--primary-green); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <span data-key="Farm Expense & Profit Planner">Farm Expense & Profit Planner</span>
+      </h2>
+
+      <div class="ledger-grid">
+        <!-- 1. LEFT COLUMN: INPUT PARAMETERS -->
+        <div class="ledger-card">
+          <h3 class="section-title">
+            <i class="fas fa-sliders-h"></i>
+            <span>Farming Parameters</span>
+          </h3>
+
+          <!-- Crop Selection -->
+          <div class="form-group">
+            <label for="crop-select">Select Crop</label>
+            <select id="crop-select" style="border-radius: 8px;">
+              <option value="paddy">Paddy (Rice)</option>
+              <option value="cotton">Cotton</option>
+              <option value="tomato">Tomato</option>
+              <option value="sugarcane">Sugarcane</option>
+              <option value="wheat">Wheat</option>
+              <option value="maize">Maize (Corn)</option>
+              <option value="chilli">Chilli</option>
+            </select>
+          </div>
+
+          <!-- Land Area (Acres) -->
+          <div class="form-group">
+            <label for="land-area" data-key="Acreage">Acreage (Land Area)</label>
+            <div class="input-sync-group">
+              <input type="range" id="land-area-slider" min="0.1" max="20" step="0.1" value="1" />
+              <input type="number" id="land-area" min="0.1" max="100" step="0.1" value="1" />
+              <span style="font-weight: 600; color: #666;" data-key="Acres">Acres</span>
+            </div>
+          </div>
+
+          <!-- Expected Yield -->
+          <div class="form-group">
+            <label for="expected-yield" data-key="Crop Yield">Expected Yield (per Acre)</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="number" id="expected-yield" min="1" step="10" value="2200" style="flex: 1; border-radius: 8px;" />
+              <span style="font-weight: 600; color: #666;">kg / Acre</span>
+            </div>
+          </div>
+
+          <!-- Expected Selling Price -->
+          <div class="form-group">
+            <label for="selling-price" data-key="Selling Price">Expected Market Price</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="number" id="selling-price" min="0.5" step="0.5" value="23" style="flex: 1; border-radius: 8px;" />
+              <span style="font-weight: 600; color: #666;">₹ / kg</span>
+            </div>
+          </div>
+
+          <!-- EXPENSE CATEGORIES -->
+          <h4 style="margin: 25px 0 15px 0; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 6px; font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+            Input Cost Breakdown (per Acre)
+          </h4>
+
+          <!-- Seeds & Sowing -->
+          <div class="form-group">
+            <label for="seeds-cost" data-key="Seeds & Sowing">Seeds & Sowing</label>
+            <div class="input-sync-group">
+              <input type="range" id="seeds-cost-slider" min="0" max="15000" step="100" value="2000" />
+              <input type="number" id="seeds-cost" min="0" max="50000" step="50" value="2000" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Land Preparation -->
+          <div class="form-group">
+            <label for="prep-cost" data-key="Land Preparation">Land Preparation & Machinery</label>
+            <div class="input-sync-group">
+              <input type="range" id="prep-cost-slider" min="0" max="15000" step="100" value="4000" />
+              <input type="number" id="prep-cost" min="0" max="50000" step="50" value="4000" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Fertilizers -->
+          <div class="form-group">
+            <label for="fertilizer-cost" data-key="Fertilizers & Manure">Fertilizers & Manure</label>
+            <div class="input-sync-group">
+              <input type="range" id="fertilizer-cost-slider" min="0" max="25000" step="100" value="5000" />
+              <input type="number" id="fertilizer-cost" min="0" max="80000" step="50" value="5000" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Water & Irrigation -->
+          <div class="form-group">
+            <label for="irrigation-cost" data-key="Water & Irrigation">Water & Irrigation</label>
+            <div class="input-sync-group">
+              <input type="range" id="irrigation-cost-slider" min="0" max="15000" step="100" value="2000" />
+              <input type="number" id="irrigation-cost" min="0" max="50000" step="50" value="2000" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Pesticides -->
+          <div class="form-group">
+            <label for="pesticide-cost" data-key="Pest Control">Pesticides & Crop Protection</label>
+            <div class="input-sync-group">
+              <input type="range" id="pesticide-cost-slider" min="0" max="15000" step="100" value="2500" />
+              <input type="number" id="pesticide-cost" min="0" max="50000" step="50" value="2500" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Labor & Harvesting -->
+          <div class="form-group">
+            <label for="labor-cost" data-key="Harvesting & Labor">Labor & Harvesting</label>
+            <div class="input-sync-group">
+              <input type="range" id="labor-cost-slider" min="0" max="30000" step="100" value="8000" />
+              <input type="number" id="labor-cost" min="0" max="80000" step="50" value="8000" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <!-- Transport -->
+          <div class="form-group">
+            <label for="transport-cost" data-key="Transport & Storage">Transport & Storage</label>
+            <div class="input-sync-group">
+              <input type="range" id="transport-cost-slider" min="0" max="15000" step="100" value="1500" />
+              <input type="number" id="transport-cost" min="0" max="50000" step="50" value="1500" />
+              <span style="font-weight: 600; color: #666;">₹</span>
+            </div>
+          </div>
+
+          <button class="btn" style="margin-top: 25px; border-radius: 25px;" onclick="saveCurrentBudget()">
+            <i class="fas fa-save"></i>
+            <span data-key="Save Current Budget">Save Current Budget</span>
+          </button>
+        </div>
+
+        <!-- 2. RIGHT COLUMN: ANALYTICS DASHBOARD -->
+        <div class="ledger-card" id="dashboard-results-anchor">
+          <h3 class="section-title">
+            <i class="fas fa-chart-pie"></i>
+            <span>Cultivation Dashboard</span>
+          </h3>
+
+          <div class="metrics-grid">
+            <!-- Total Cultivation Cost -->
+            <div class="metric-mini-card">
+              <span class="metric-label" data-key="Total Cost">Total Cost</span>
+              <span class="metric-value loss-color" id="out-total-cost">₹0</span>
+            </div>
+
+            <!-- Expected Revenue -->
+            <div class="metric-mini-card">
+              <span class="metric-label" data-key="Expected Income">Expected Income</span>
+              <span class="metric-value" id="out-gross-income" style="color: #2196f3;">₹0</span>
+            </div>
+
+            <!-- Net Profit / Loss -->
+            <div class="metric-mini-card full-width">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="metric-label" data-key="Net Profit">Net Profit / Loss</span>
+                <span class="sentiment-badge bullish" id="profit-badge">PROFIT</span>
+              </div>
+              <span class="metric-value" id="out-net-profit" style="font-size: 1.8rem;">₹0</span>
+            </div>
+
+            <!-- ROI -->
+            <div class="metric-mini-card">
+              <span class="metric-label" data-key="Return on Investment (ROI)">Return on Investment (ROI)</span>
+              <span class="metric-value" id="out-roi">0%</span>
+            </div>
+
+            <!-- Yield Breakeven -->
+            <div class="metric-mini-card">
+              <span class="metric-label" data-key="Break-Even Yield">Break-Even Yield</span>
+              <span class="metric-value" id="out-be-yield" style="font-size: 1.15rem; color: #4e342e;">0 kg / Acre</span>
+            </div>
+
+            <!-- Price Breakeven -->
+            <div class="metric-mini-card full-width">
+              <span class="metric-label" data-key="Break-Even Price">Break-Even Price</span>
+              <span class="metric-value" id="out-be-price" style="font-size: 1.15rem; color: #4e342e;">₹0 / kg</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Advice panel -->
+          <div class="advice-panel">
+            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #004d40; display: flex; align-items: center; gap: 8px;">
+              <i class="fas fa-lightbulb" style="color: #ffd54f;"></i>
+              <span data-key="Financial Advice & Insights">Financial Advice & Insights</span>
+            </h4>
+            <div class="advice-list" id="advice-list-container">
+              <!-- Advices populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Visual charts -->
+          <div class="charts-container">
+            <div class="chart-wrapper">
+              <canvas id="expenseBreakdownChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="summaryComparisonChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. SAVED BUDGETS HISTORY -->
+      <div class="ledger-card history-card">
+        <h3 class="section-title">
+          <i class="fas fa-history"></i>
+          <span data-key="Saved Budgets">Saved Budgets History</span>
+        </h3>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Crop Name</th>
+              <th>Area</th>
+              <th>Total Expense</th>
+              <th>Net Profit/Loss</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <!-- Loaded dynamically from localStorage -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h1 data-key="title" style="color: #ffd54f; font-size: 1.5rem; margin-bottom: 1rem">
+            Smart Farmer Assistant
+          </h1>
+          <p>
+            Your one-stop solution for modern agriculture. Providing real-time
+            insights, expert advice, and government support for every farmer.
+          </p>
+        </div>
+        <div class="footer-section">
+          <h4 data-key="govt_portals">Govt Portals</h4>
+          <ul>
+            <li>
+              <a href="https://tnau.ac.in/" target="_blank"><i class="fas fa-university"></i> TNAU</a>
+            </li>
+            <li>
+              <a href="https://agmarknet.gov.in/" target="_blank"><i class="fas fa-chart-bar"></i> Agmarknet</a>
+            </li>
+            <li>
+              <a href="https://pmkisan.gov.in/" target="_blank"><i class="fas fa-hand-holding-usd"></i> PM-Kisan</a>
+            </li>
+            <li>
+              <a href="https://www.tnagrisnet.tn.gov.in/" target="_blank"><i class="fas fa-globe"></i> TN Agri Dept</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p data-key="footer_text">
+          © 2026 Smart Farmer Assistant. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">💬</div>
+    <div id="chatbot-box" class="chatbot-hidden">
+      <div class="chatbot-header">
+        <span>🌱 Agri Bot</span>
+        <select id="chatbot-lang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+        </select>
+        <button onclick="toggleChatbot()">✖</button>
+      </div>
+      <div id="chatbot-messages"></div>
+      <div class="chatbot-input-area">
+        <input
+          type="text"
+          id="chatbot-input"
+          placeholder="Ask about farming..."
+          onkeydown="if (event.key === 'Enter') sendChatbotMessage();"
+        />
+        <button onclick="sendChatbotMessage()">Send</button>
+        <button onclick="startVoice()">🎤</button>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/script.js"></script>
+    <script type="module" src="js/ledger.js"></script>
+  </body>
+</html>

@@ -28,19 +28,25 @@ function initSurveyPage() {
   surveyMap = L.map("survey-map").setView([11.1271, 78.6569], 7);
 
   standardSurveyLayer = L.tileLayer(
-    "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+    "https://mt{s}.google.com/vt/lyrs=m&hl={hl}&scale={scale}&x={x}&y={y}&z={z}",
     {
       subdomains: ["0", "1", "2", "3"],
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      hl: (localStorage.getItem("lang") || "en") === "ta" ? "ta" : "en",
+      scale: 2,
       attribution: "&copy; Google Maps",
     },
   );
 
   satelliteSurveyLayer = L.tileLayer(
-    "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    "https://mt{s}.google.com/vt/lyrs=y&hl={hl}&scale={scale}&x={x}&y={y}&z={z}",
     {
       subdomains: ["0", "1", "2", "3"],
-      maxZoom: 20,
+      maxZoom: 22,
+      maxNativeZoom: 18, // Satellite imagery in rural areas often doesn't go beyond 18
+      hl: (localStorage.getItem("lang") || "en") === "ta" ? "ta" : "en",
+      scale: 2,
       attribution: "&copy; Google Maps",
     },
   );
@@ -50,6 +56,12 @@ function initSurveyPage() {
 
   cadastralLayerGroup = L.layerGroup().addTo(surveyMap);
   surveyWaterLayerGroup = L.layerGroup().addTo(surveyMap);
+
+  // Expose to window for global access (especially from script.js)
+  window.surveyMap = surveyMap;
+  window.surveyWaterLayerGroup = surveyWaterLayerGroup;
+  window.updateSurveyMarker = updateSurveyMarker;
+  window.highlightWaterBodies = highlightWaterBodies;
 
   // Satellite Toggle Button
   const satToggle = document.getElementById("survey-satellite-toggle");
@@ -75,8 +87,25 @@ function initSurveyPage() {
   surveyMap.on("click", async (e) => {
     const { lat, lng } = e.latlng;
     updateSurveyMarker(lat, lng);
-    fetchLandSurveyRecords(lat, lng);
-    highlightWaterBodies(lat, lng);
+    
+    if (window.activeMapMode === "weather") {
+      let locationName = `Coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      if (typeof window.reverseGeocode === "function") {
+        try {
+          locationName = await window.reverseGeocode(lat, lng);
+        } catch (err) {
+          console.error("Reverse geocoding failed, using coordinates:", err);
+        }
+      }
+      if (window.fetchWeather) {
+        window.fetchWeather(lat, lng, locationName);
+      }
+      const weatherInput = document.getElementById("location-input");
+      if (weatherInput) weatherInput.value = locationName;
+    } else {
+      fetchLandSurveyRecords(lat, lng);
+      highlightWaterBodies(lat, lng);
+    }
   });
 
   // Setup Autocomplete Search
@@ -114,8 +143,8 @@ function setupSurveyAutocomplete() {
 
     surveySearchTimeout = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=in`,
+        let response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=in&viewbox=75,8,80.5,14`,
           {
             headers: {
               "Accept-Language":
@@ -125,7 +154,24 @@ function setupSurveyAutocomplete() {
             },
           },
         );
-        const data = await response.json();
+        let data = await response.json();
+
+        // Fallback: If no results found, try appending "Tamil Nadu" to help find small rural villages
+        if ((!data || data.length === 0) && !query.toLowerCase().includes("tamil")) {
+          response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Tamil Nadu")}&limit=5&addressdetails=1&countrycodes=in`,
+            {
+              headers: {
+                "Accept-Language":
+                  typeof currentLang !== "undefined" && currentLang === "ta"
+                    ? "ta"
+                    : "en",
+              },
+            },
+          );
+          data = await response.json();
+        }
+
         if (data && data.length > 0) {
           suggestionsDiv.innerHTML = data
             .map((item) => {
@@ -735,7 +781,100 @@ function selectPlotRecord(plot, poly) {
           <strong style="color: #2e7d32; font-size: 1.05rem; font-weight: 800;">₹${plot.totalValue.toLocaleString()}</strong>
         </div>
       </div>
+      
+      <!-- TN Government Registry Verification Bridge inside Card -->
+      <div style="margin-top: 15px; padding: 12px; border-radius: 8px; background: #e8f5e9; border: 1.5px solid #a5d6a7; display: flex; flex-direction: column; gap: 8px;">
+        <h5 style="color: #1b5e20; font-size: 0.85rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;">
+          <i class="fas fa-shield-alt"></i> ${isTamil ? "அரசு இ-சேவைகள் சரிபார்ப்பு" : "Official TN Government Verification"}
+        </h5>
+        <p style="font-size: 0.74rem; color: #33691e; margin: 0; line-height: 1.35;">
+          ${isTamil 
+            ? "நில விவரங்களை சரிபார்க்க, கீழே உள்ள தகவலை நகலெடுத்து, அரசு இ-சேவை இணையதளத்தில் பதியவும்:" 
+            : "To legally verify this land, copy the details below and paste them into the official TN E-Services Portal:"}
+        </p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
+          <!-- Copy District -->
+          <div style="background: white; border: 1px solid #c8e6c9; border-radius: 6px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 0.55rem; color: #777;">${isTamil ? "மாவட்டம்" : "District"}</span>
+              <span style="font-size: 0.75rem; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis;">${plot.district}</span>
+            </div>
+            <button onclick="copyToClipboard('${plot.district.replace(/'/g, "\\'")}', this)" style="border: none; background: transparent; cursor: pointer; color: var(--primary-green); padding: 2px;" title="Copy">
+              <i class="far fa-copy" style="font-size: 0.8rem;"></i>
+            </button>
+          </div>
+          
+          <!-- Copy Taluk -->
+          <div style="background: white; border: 1px solid #c8e6c9; border-radius: 6px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 0.55rem; color: #777;">${isTamil ? "வட்டம்" : "Taluk"}</span>
+              <span style="font-size: 0.75rem; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis;">${plot.taluk}</span>
+            </div>
+            <button onclick="copyToClipboard('${plot.taluk.replace(/'/g, "\\'")}', this)" style="border: none; background: transparent; cursor: pointer; color: var(--primary-green); padding: 2px;" title="Copy">
+              <i class="far fa-copy" style="font-size: 0.8rem;"></i>
+            </button>
+          </div>
+
+          <!-- Copy Village -->
+          <div style="background: white; border: 1px solid #c8e6c9; border-radius: 6px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 0.55rem; color: #777;">${isTamil ? "கிராமம்" : "Village"}</span>
+              <span style="font-size: 0.75rem; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis;">${plot.village}</span>
+            </div>
+            <button onclick="copyToClipboard('${plot.village.replace(/'/g, "\\'")}', this)" style="border: none; background: transparent; cursor: pointer; color: var(--primary-green); padding: 2px;" title="Copy">
+              <i class="far fa-copy" style="font-size: 0.8rem;"></i>
+            </button>
+          </div>
+
+          <!-- Copy Survey Number -->
+          <div style="background: white; border: 1px solid #c8e6c9; border-radius: 6px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 0.55rem; color: #777;">${isTamil ? "புல எண்" : "Survey No."}</span>
+              <span style="font-size: 0.75rem; font-weight: 700; color: #333; overflow: hidden; text-overflow: ellipsis;">${plot.surveyNo}</span>
+            </div>
+            <button onclick="copyToClipboard('${plot.surveyNo.replace(/'/g, "\\'")}', this)" style="border: none; background: transparent; cursor: pointer; color: var(--primary-green); padding: 2px;" title="Copy">
+              <i class="far fa-copy" style="font-size: 0.8rem;"></i>
+            </button>
+          </div>
+        </div>
+
+        <a href="https://eservices.tn.gov.in/eservicesweb/land/chitta.html" target="_blank" class="btn" style="margin-top: 5px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #2e7d32; color: white; border: none; font-weight: bold; padding: 10px; border-radius: 6px; text-decoration: none; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-size: 0.82rem;" onmouseover="this.style.background='#1b5e20'" onmouseout="this.style.background='#2e7d32'">
+          <i class="fas fa-external-link-alt"></i> 
+          <span>${isTamil ? "அரசு இ-சேவை தளம் செல்க" : "Open TN Gov E-Services Portal"}</span>
+        </a>
+      </div>
+
+      <!-- Action Button for Weather Integration -->
+      <button onclick="goToWeather(${plot.coords && plot.coords.length > 0 ? plot.coords[0][0] : poly.getBounds().getCenter().lat}, ${plot.coords && plot.coords.length > 0 ? plot.coords[0][1] : poly.getBounds().getCenter().lng}, '${plot.village}, ${plot.district}')" class="btn" style="margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary-green); color: white; border: none; font-weight: bold; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+        <i class="fas fa-cloud-sun"></i> 
+        <span>${isTamil ? "இந்த நிலத்திற்கான வானிலை விவரம்" : "View Weather Forecast for this Plot"}</span>
+      </button>
     `;
+
+    // Update Right-side helper inputs if they are in the DOM
+    const hDistrict = document.getElementById("helper-district");
+    const hTaluk = document.getElementById("helper-taluk");
+    const hVillage = document.getElementById("helper-village");
+    const hSurvey = document.getElementById("helper-survey");
+    if (hDistrict) hDistrict.innerText = plot.district;
+    if (hTaluk) hTaluk.innerText = plot.taluk;
+    if (hVillage) hVillage.innerText = plot.village;
+    if (hSurvey) hSurvey.innerText = plot.surveyNo;
+
+    // Update Farm Digital Twin
+    if (window.updateFarmDigitalTwin) {
+      window.updateFarmDigitalTwin({
+        activeFarm: {
+          surveyNo: plot.surveyNo,
+          village: plot.village || (typeof selectedSurveyLocation !== "undefined" && selectedSurveyLocation?.name?.split(",")[0]) || "",
+          acres: plot.acres,
+          classification: plot.classification,
+          crop: plot.crop,
+          soilType: (plot.classification || "").toLowerCase().includes("wetland") ? "clay" : "loamy"
+        }
+      });
+    }
   }
 }
 
@@ -766,10 +905,19 @@ async function searchLandRecords() {
 
   // Geocode place coordinates
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}&limit=1&addressdetails=1&countrycodes=in`,
+    let response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}&limit=1&addressdetails=1&countrycodes=in&viewbox=75,8,80.5,14`,
     );
-    const data = await response.json();
+    let data = await response.json();
+
+    // Fallback: If no results found, try appending "Tamil Nadu" to help find small rural villages
+    if ((!data || data.length === 0) && !place.toLowerCase().includes("tamil")) {
+      response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place + ", Tamil Nadu")}&limit=1&addressdetails=1&countrycodes=in`,
+      );
+      data = await response.json();
+    }
+
     if (data && data.length > 0) {
       const lat = parseFloat(data[0].lat);
       const lon = parseFloat(data[0].lon);
@@ -1245,9 +1393,106 @@ function renderSurveyVisualCharts(plots, isTamil) {
   });
 }
 
+// Global active mode
+window.activeMapMode = "land";
+
+// Global mode switcher
+window.setDashboardMode = function(mode) {
+  const isTamil = typeof currentLang !== "undefined" && currentLang === "ta";
+  const titleEl = document.getElementById("map-section-title");
+  
+  const landBtn = document.getElementById("toggle-mode-land");
+  const weatherBtn = document.getElementById("toggle-mode-weather");
+  
+  if (mode === "land") {
+    if (landBtn) {
+      landBtn.classList.add("active");
+      landBtn.style.background = "var(--primary-green)";
+      landBtn.style.color = "white";
+    }
+    if (weatherBtn) {
+      weatherBtn.classList.remove("active");
+      weatherBtn.style.background = "transparent";
+      weatherBtn.style.color = "#558b2f";
+    }
+    
+    if (titleEl) {
+      titleEl.innerHTML = isTamil ? "இணையவழி புல வரைபடம் & நீர்நிலைகள்" : "Interactive Cadastral Map & Water Highlights";
+    }
+    
+    // Hide weather, show land
+    const weatherSec = document.getElementById("weather-records-section");
+    if (weatherSec) weatherSec.style.display = "none";
+    
+    const landSec = document.getElementById("survey-records-section");
+    if (landSec) landSec.style.display = "block";
+    
+    window.activeMapMode = "land";
+    window.location.hash = "land";
+  } else {
+    if (weatherBtn) {
+      weatherBtn.classList.add("active");
+      weatherBtn.style.background = "var(--primary-green)";
+      weatherBtn.style.color = "white";
+    }
+    if (landBtn) {
+      landBtn.classList.remove("active");
+      landBtn.style.background = "transparent";
+      landBtn.style.color = "#558b2f";
+    }
+    
+    if (titleEl) {
+      titleEl.innerHTML = isTamil ? "வானிலை வரைபடம் & முன்னறிவிப்பு" : "Interactive Weather Map & Forecast";
+    }
+    
+    // Hide land, show weather
+    const landSec = document.getElementById("survey-records-section");
+    if (landSec) landSec.style.display = "none";
+    
+    const weatherSec = document.getElementById("weather-records-section");
+    if (weatherSec) weatherSec.style.display = "block";
+    
+    window.activeMapMode = "weather";
+    window.location.hash = "weather";
+  }
+  
+  if (window.surveyMap) {
+    setTimeout(() => {
+      window.surveyMap.invalidateSize();
+    }, 100);
+  }
+};
+
+// Global function to redirect to standalone weather.html
+window.goToWeather = function(lat, lon, name) {
+  localStorage.setItem('sharedLocation', JSON.stringify({ lat, lon, name }));
+  window.location.href = 'weather.html';
+};
+
 // Initialization on DOM Load
 document.addEventListener("DOMContentLoaded", () => {
   initSurveyPage();
+  
+  // Set default mode to land (weather is on a separate page now)
+  window.setDashboardMode('land');
+  
+  // Handle shared state if navigating from weather.html
+  const shared = localStorage.getItem('sharedLocation');
+  if (shared) {
+    try {
+      const { lat, lon, name } = JSON.parse(shared);
+      localStorage.removeItem('sharedLocation');
+      
+      // Auto-load land survey data for the shared location
+      setTimeout(() => {
+        updateSurveyMarker(lat, lon);
+        fetchLandSurveyRecords(lat, lon);
+        highlightWaterBodies(lat, lon);
+      }, 500);
+    } catch (e) {
+      console.error("Failed to parse shared location:", e);
+    }
+  }
 });
 
 // Also expose as global for safety
@@ -1260,112 +1505,367 @@ window.downloadPattaPDF = downloadPattaPDF;
 // ===================================================================
 
 const landLocations = {
-  Salem: {
+  Ariyalur: {
     taluks: {
-      "Omalur (ஓமலூர்)": [
-        "Omalur (ஓமலூர் கிராமம்)",
-        "Kadayampatti (கடையம்பட்டி)",
-        "Tharamangalam (தாரமங்கலம்)",
-      ],
-      "Salem South (சேலம் தெற்கு)": [
-        "Maniyanur (மணியனூர்)",
-        "Veerapandi (வீரபாண்டி)",
-        "Dhadagapatti (தாதகாபட்டி)",
-      ],
-    },
+      "Ariyalur (அரியலூர்)": ["Ariyalur Town (அரியலூர்)", "Keezhapalur (கீழப்பழுவூர்)", "Kallankurichi (கல்லங்குறிச்சி)"],
+      "Sendurai (செந்துறை)": ["Sendurai Village (செந்துறை)", "Nakkambadi (நக்கம்பாடி)", "Asur (ஆசூர்)"]
+    }
+  },
+  Chengalpattu: {
+    taluks: {
+      "Chengalpattu (செங்கல்கட்டு)": ["Chengalpattu Town (செங்கல்பட்டு)", "Vandalur (வண்டலூர்)", "Maraimalai Nagar (மறைமலைநகர்)"],
+      "Tambaram (தாம்பரம்)": ["Tambaram Town (தாம்பரம்)", "Pallavaram (பல்லாவரம்)", "Chitlapakkam (சிட்லபாக்கம்)"]
+    }
+  },
+  Chennai: {
+    taluks: {
+      "Egmore (எழும்பூர்)": ["Egmore Area (எழும்பூர்)", "Nungambakkam (நுங்கம்பாக்கம்)", "Chetpet (சேத்துப்பட்டு)"],
+      "Mylapore (மயிலாப்பூர்)": ["Mylapore Area (மயிலாப்பூர்)", "Adyar (அடையாறு)", "Royapettah (இராயப்பேட்டை)"]
+    }
+  },
+  Coimbatore: {
+    taluks: {
+      "Coimbatore North (கோவை வடக்கு)": ["Ganapathy (கணபதி)", "Thudiyalur (துடியலூர்)", "Sowripalayam (சௌரிபாளையம்)"],
+      "Pollachi (பொள்ளாச்சி)": ["Pollachi Town (பொள்ளாச்சி)", "Anaimalai (ஆனைமலை)", "Negamam (நெகமம்)"]
+    }
+  },
+  Cuddalore: {
+    taluks: {
+      "Cuddalore (கடலூர்)": ["Cuddalore Town (கடலூர்)", "Nellikuppam (நெல்லிக்குப்பம்)", "Panruti (பண்ருட்டி)"],
+      "Chidambaram (சிதம்பரம்)": ["Chidambaram Town (சிதம்பரம்)", "Kattumannarkoil (காட்டுமன்னார்கோவில்)", "Annamalai Nagar (அண்ணாமலை நகர்)"]
+    }
   },
   Dharmapuri: {
     taluks: {
-      "Pennagaram (பெண்ணாகரம்)": [
-        "Kodur (கோடூர்)",
-        "Pennagaram (பெண்ணாகரம் கிராமம்)",
-        "Hogenakkal (ஒகேனக்கல்)",
-      ],
-      "Harur (அரூர்)": [
-        "Harur Town (அரூர் நகரம்)",
-        "Morappur (மொரப்பூர்)",
-        "Kambainallur (கம்பைநல்லூர்)",
-      ],
-    },
+      "Pennagaram (பெண்ணாகரம்)": ["Kodur (கோடூர்)", "Pennagaram (பெண்ணாகரம் கிராமம்)", "Hogenakkal (ஒகேனக்கல்)"],
+      "Harur (அரூர்)": ["Harur Town (அரூர் நகரம்)", "Morappur (மொரப்பூர்)", "Kambainallur (கம்பைநல்லூர்)"]
+    }
+  },
+  Dindigul: {
+    taluks: {
+      "Dindigul (திண்டுக்கல்)": ["Dindigul Town (திண்டுக்கல்)", "Oddanchatram (ஒட்டன்சத்திரம்)", "Natham (நத்தம்)"],
+      "Palani (பழனி)": ["Palani Town (பழனி)", "Kodaikanal (கொடைக்கானல்)", "Ayakudi (ஆயக்குடி)"]
+    }
   },
   Erode: {
     taluks: {
-      "Gobichettipalayam (கோபிசெட்டிபாளையம்)": [
-        "Gobi Town (கோபி நகரம்)",
-        "Nambiyur (நம்பியூர்)",
-        "Kalingarayanpalayam (காலிங்கராயன்பாளையம்)",
-      ],
-      "Perundurai (பெருந்துறை)": [
-        "Perundurai (பெருந்துறை கிராமம்)",
-        "Chennimalai (சென்னிமலை)",
-        "Kanjikovil (கஞ்சிகோவில்)",
-      ],
-    },
+      "Gobichettipalayam (கோபிசெட்டிபாளையம்)": ["Gobi Town (கோபி நகரம்)", "Nambiyur (நம்பியூர்)", "Kalingarayanpalayam (காலிங்கராயன்பாளையம்)"],
+      "Perundurai (பெருந்துறை)": ["Perundurai (பெருந்துறை கிராமம்)", "Chennimalai (சென்னிமலை)", "Kanjikovil (கஞ்சிகோவில்)"]
+    }
   },
+  Kallakurichi: {
+    taluks: {
+      "Kallakurichi (கள்ளக்குறிச்சி)": ["Kallakurichi Town (கள்ளக்குறிச்சி)", "Chinnasalem (சின்னசேலம்)", "Thiyagadurgam (தியாகதுருகம்)"],
+      "Sankarapuram (சங்கராபுரம்)": ["Sankarapuram Town (சங்கராபுரம்)", "Rishivandiyam (ரிஷிவந்தியம்)", "Moongilthuraipattu (மூங்கில்துறைப்பட்டு)"]
+    }
+  },
+  Kanchipuram: {
+    taluks: {
+      "Kanchipuram (காஞ்சிபுரம்)": ["Kanchipuram Town (காஞ்சிபுரம்)", "Walajabad (வாலாஜாபாத்)", "Uttiramerur (உத்திரமேரூர்)"],
+      "Sriperumbudur (ஸ்ரீபெரும்புதூர்)": ["Sriperumbudur Town (ஸ்ரீபெரும்புதூர்)", "Kundrathur (குன்றத்தூர்)", "Sunguvarchatram (சுங்குவார்சத்திரம்)"]
+    }
+  },
+  Kanyakumari: {
+    taluks: {
+      "Nagercoil (நாகர்கோவில்)": ["Nagercoil Town (நாகர்கோவில்)", "Agastheeswaram (அகஸ்தீஸ்வரம்)", "Kanyakumari Town (கன்னியாகுமரி)"],
+      "Kalkulam (கல்குளம்)": ["Thuckalay (தக்கலை)", "Padmanabhapuram (பத்மநாபபுரம்)", "Colachel (கொளச்சல்)"]
+    }
+  },
+  Karur: {
+    taluks: {
+      "Karur (கரூர்)": ["Karur Town (கரூர்)", "Aravakurichi (அரவக்குறிச்சி)", "Velayuthampalayam (வேலாயுதம்பாளையம்)"],
+      "Kulithalai (குளித்தலை)": ["Kulithalai Town (குளித்தலை)", "Thogamalai (தோகைமலை)", "Krishnarayapuram (கிருஷ்ணராயபுரம்)"]
+    }
+  },
+  Krishnagiri: {
+    taluks: {
+      "Krishnagiri (கிருஷ்ணகிரி)": ["Krishnagiri Town (கிருஷ்ணகிரி)", "Kaveripattinam (காவேரிப்பட்டினம்)", "Uthangarai (உத்தங்கரை)"],
+      "Hosur (ஓசூர்)": ["Hosur Town (ஓசூர்)", "Denkanikottai (தேன்கனிக்கோட்டை)", "Shoolagiri (சூளகிரி)"]
+    }
+  },
+  Madurai: {
+    taluks: {
+      "Madurai South (மதுரை தெற்கு)": ["Madurai City (மதுரை நகரம்)", "Thiruparankundram (திருப்பரங்குன்றம்)", "Avaniyapuram (அவனியாபுரம்)"],
+      "Melur (மேலூர்)": ["Melur Town (மேலூர்)", "Alanganallur (அலங்காநல்லூர்)", "Kottampatti (கொட்டாம்பட்டி)"]
+    }
+  },
+  Mayiladuthurai: {
+    taluks: {
+      "Mayiladuthurai (மயிலாடுதுறை)": ["Mayiladuthurai Town (மயிலாடுதுறை)", "Kuthalam (குத்தாலம்)", "Manalmedu (மணல்மேடு)"],
+      "Sirkazhi (சீர்காழி)": ["Sirkazhi Town (சீர்காழி)", "Vaitheeswarankoil (வைதீஸ்வரன்கோவில்)", "Poompuhar (பூம்புகார்)"]
+    }
+  },
+  Nagapattinam: {
+    taluks: {
+      "Nagapattinam (நாகப்பட்டினம்)": ["Nagapattinam Town (நாகப்பட்டினம்)", "Velankanni (வேளாங்கண்ணி)", "Thirupoondi (திருப்பூண்டி)"],
+      "Vedaranyam (வேதாரண்யம்)": ["Vedaranyam Town (வேதாரண்யம்)", "Thalaignayiru (தலைஞாயிறு)", "Kodiakkarai (கோடியக்கரை)"]
+    }
+  },
+  Namakkal: {
+    taluks: {
+      "Namakkal (நாமக்கல்)": ["Namakkal Town (நாமக்கல்)", "Rasipuram (ராசிபுரம்)", "Sendamangalam (சேந்தமங்கலம்)"],
+      "Tiruchengode (திருச்செங்கோடு)": ["Tiruchengode Town (திருச்செங்கோடு)", "Pallipalayam (பள்ளிப்பாளையம்)", "Velur (வேலூர்)"]
+    }
+  },
+  Nilgiris: {
+    taluks: {
+      "Ooty (ஊட்டி)": ["Ooty Town (ஊட்டி)", "Kotagiri (கொத்தகிரி)", "Ketti (கேட்டி)"],
+      "Coonoor (குன்னூர்)": ["Coonoor Town (குன்னூர்)", "Wellington (வெலிங்டன்)", "Aruvankadu (அருவங்காடு)"]
+    }
+  },
+  Perambalur: {
+    taluks: {
+      "Perambalur (பெரம்பலூர்)": ["Perambalur Town (பெரம்பலூர்)", "Kurumbalur (குரும்பலூர்)", "Kunnam (குன்னம்)"],
+      "Veppanthattai (வேப்பந்தட்டை)": ["Veppanthattai Town (வேப்பந்தட்டை)", "Valikandapuram (வாலிகண்டபுரம்)", "Arumbavur (அரும்பாவூர்)"]
+    }
+  },
+  Pudukkottai: {
+    taluks: {
+      "Pudukkottai (புதுக்கோட்டை)": ["Pudukkottai Town (புதுக்கோட்டை)", "Alangudi (ஆலங்குடி)", "Gandharvakottai (கந்தர்வகோட்டை)"],
+      "Aranthangi (அறந்தாங்கி)": ["Aranthangi Town (அறந்தாங்கி)", "Avudaiyarkoil (ஆவுடையார்கோவில்)", "Mimisal (மீமிசல்)"]
+    }
+  },
+  Ramanathapuram: {
+    taluks: {
+      "Ramanathapuram (இராமநாதபுரம்)": ["Ramanathapuram Town (இராமநாதபுரம்)", "Rameswaram (இராமேஸ்வரம்)", "Thirupullani (திருப்புல்லாணி)"],
+      "Paramakudi (பரமக்குடி)": ["Paramakudi Town (பரமக்குடி)", "Mudukulathur (முதுகுளத்தூர்)", "Kamuthi (கமுதி)"]
+    }
+  },
+  Ranipet: {
+    taluks: {
+      "Ranipet (ராணிப்பேட்டை)": ["Ranipet Town (ராணிப்பேட்டை)", "Walajah (வாலாஜா)", "Arcot (ஆற்காடு)"],
+      "Arakkonam (அரக்கோணம்)": ["Arakkonam Town (அரக்கோணம்)", "Thakkolam (தக்கோலம்)", "Nemili (நெமிலி)"]
+    }
+  },
+  Salem: {
+    taluks: {
+      "Omalur (ஓமலூர்)": ["Omalur (ஓமலூர் கிராமம்)", "Kadayampatti (கடையம்பட்டி)", "Tharamangalam (தாரமங்கலம்)"],
+      "Salem South (சேலம் தெற்கு)": ["Maniyanur (மணியனூர்)", "Veerapandi (வீரபாண்டி)", "Dhadagapatti (தாதகாபட்டி)"]
+    }
+  },
+  Sivaganga: {
+    taluks: {
+      "Sivaganga (சிவகங்கை)": ["Sivaganga Town (சிவகங்கை)", "Manamadurai (மானாமதுரை)", "Kalayarkoil (காளையார்கோவில்)"],
+      "Karaikudi (காரைக்குடி)": ["Karaikudi Town (காரைக்குடி)", "Devakottai (தேவகோட்டை)", "Kanadukathan (கானாடுகாத்தான்)"]
+    }
+  },
+  Tenkasi: {
+    taluks: {
+      "Tenkasi (தென்காசி)": ["Tenkasi Town (தென்காசி)", "Kadayanallur (கடையநல்லூர்)", "Courtallam (குற்றாலம்)"],
+      "Sankarankovil (சங்கரன்கோவில்)": ["Sankarankovil Town (சங்கரன்கோவில்)", "Puliyangudi (புளியங்குடி)", "Thiruvengadam (திருவேங்கடம்)"]
+    }
+  },
+  Thanjavur: {
+    taluks: {
+      "Thanjavur (தஞ்சாவூர்)": ["Thanjavur Town (தஞ்சாவூர்)", "Thiruvaiyaru (திருவையாறு)", "Papanasam (பாபநாசம்)"],
+      "Orathanadu (ஒரத்தநாடு)": ["Orathanadu Town (ஒரத்தநாடு)", "Melur (மேலூர்)", "Pattukkottai (பட்டுக்கோட்டை)"]
+    }
+  },
+  Theni: {
+    taluks: {
+      "Theni (தேனி)": ["Theni Town (தேனி)", "Andipatti (ஆண்டிபட்டி)", "Bodinayakanur (போடிநாயக்கனூர்)"],
+      "Periyakulam (பெரியகுளம்)": ["Periyakulam Town (பெரியகுளம்)", "Cumbum (கம்பம்)", "Chinnamanur (சின்னமனூர்)"]
+    }
+  },
+  Thoothukudi: {
+    taluks: {
+      "Thoothukudi (தூத்துக்குடி)": ["Thoothukudi Town (தூத்துக்குடி)", "Tiruchendur (திருச்செந்தூர்)", "Eral (ஏரல்)"],
+      "Kovilpatti (கோவில்பட்டி)": ["Kovilpatti Town (கோவில்பட்டி)", "Ettayapuram (எட்டயபுரம்)", "Vilathikulam (விளாத்திகுளம்)"]
+    }
+  },
+  Tiruchirappalli: {
+    taluks: {
+      "Trichy East (திருச்சி கிழக்கு)": ["Trichy City (திருச்சி)", "Srirangam (ஸ்ரீரங்கம்)", "Thuvakudi (துவாக்குடி)"],
+      "Lalgudi (லால்குடி)": ["Lalgudi Town (லால்குடி)", "Manachanallur (மண்ணச்சநல்லூர்)", "Pullambadi (புள்ளம்பாடி)"]
+    }
+  },
+  Tirunelveli: {
+    taluks: {
+      "Tirunelveli (திருநெல்வேலி)": ["Tirunelveli Town (திருநெல்வேலி)", "Nanguneri (நாங்குநேரி)", "Palayamkottai (பாளையங்கோட்டை)"],
+      "Ambasamudram (அம்பாசமுத்திரம்)": ["Ambasamudram Town (அம்பாசமுத்திரம்)", "Cheranmahadevi (சேரன்மகாதேவி)", "Kallidaikurichi (கல்லிடைக்குறிச்சி)"]
+    }
+  },
+  Tirupathur: {
+    taluks: {
+      "Tirupathur (திருப்பத்தூர்)": ["Tirupathur Town (திருப்பத்தூர்)", "Jolarpet (ஜோலார்பேட்டை)", "Kandili (கந்திலி)"],
+      "Vaniyambadi (வாணியம்பாடி)": ["Vaniyambadi Town (வாணியம்பாடி)", "Ambur (ஆம்பூர்)", "Alangayam (ஆலங்காயம்)"]
+    }
+  },
+  Tiruppur: {
+    taluks: {
+      "Tiruppur North (திருப்பூர் வடக்கு)": ["Tiruppur Town (திருப்பூர்)", "Avinashi (அவிநாசி)", "Palladam (பல்லடம்)"],
+      "Dharapuram (தாராபுரம்)": ["Dharapuram Town (தாராபுரம்)", "Kangeyam (காங்கேயம்)", "Udumalaipettai (உடுமலைப்பேட்டை)"]
+    }
+  },
+  Tiruvallur: {
+    taluks: {
+      "Tiruvallur (திருவள்ளூர்)": ["Tiruvallur Town (திருவள்ளூர்)", "Ponneri (பொன்னேரி)", "Gummidipoondi (கும்மிடிப்பூண்டி)"],
+      "Avadi (ஆவடி)": ["Avadi Town (ஆவடி)", "Poonamallee (பூந்தமல்லி)", "Thirumazhisai (திருமழிசை)"]
+    }
+  },
+  Tiruvannamalai: {
+    taluks: {
+      "Tiruvannamalai (திருவண்ணாமலை)": ["Tiruvannamalai Town (திருவண்ணாமலை)", "Polur (போளூர்)", "Chengam (செங்கம்)"],
+      "Arni (ஆரணி)": ["Arni Town (ஆரணி)", "Cheyyar (செய்யாறு)", "Vandavasi (வந்தவாசி)"]
+    }
+  },
+  Tiruvarur: {
+    taluks: {
+      "Tiruvarur (திருவாரூர்)": ["Tiruvarur Town (திருவாரூர்)", "Nannilam (நன்னிலம்)", "Kudavasal (குடவாசல்)"],
+      "Mannargudi (மன்னார்குடி)": ["Mannargudi Town (மன்னார்குடி)", "Thiruthuraipoondi (திருத்துறைப்பூண்டி)", "Needamangalam (நீடாமங்கலம்)"]
+    }
+  },
+  Vellore: {
+    taluks: {
+      "Vellore (வேலூர்)": ["Vellore Town (வேலூர்)", "Katpadi (காட்பாடி)", "Arcot Road (ஆற்காடு சாலை)"],
+      "Gudiyatham (குடியாத்தம்)": ["Gudiyatham Town (குடியாத்தம்)", "Pernambut (பேர்ணாம்பட்டு)", "Kaniyambadi (கணியம்பாடி)"]
+    }
+  },
+  Viluppuram: {
+    taluks: {
+      "Viluppuram (விழுப்புரம்)": ["Viluppuram Town (விழுப்புரம்)", "Gingee (செஞ்சி)", "Vikravandi (விக்கிரவாண்டி)"],
+      "Tindivanam (திண்டிவனம்)": ["Tindivanam Town (திண்டிவனம்)", "Marakkanam (மரக்காணம்)", "Vanur (வானூர்)"]
+    }
+  },
+  Virudhunagar: {
+    taluks: {
+      "Virudhunagar (விருதுநகர்)": ["Virudhunagar Town (விருதுநகர்)", "Aruppukottai (அருப்புக்கோட்டை)", "Sattur (சாத்தூர்)"],
+      "Srivilliputhur (ஸ்ரீவில்லிபுத்தூர்)": ["Srivilliputhur Town (ஸ்ரீவில்லிபுத்தூர்)", "Sivakasi (சிவகாசி)", "Rajapalayam (ராஜபாளையம்)"]
+    }
+  }
 };
 
 window.populateTaluks = function () {
   const distSelect = document.getElementById("eservices-district");
-  const talukSelect = document.getElementById("eservices-taluk");
-  const villageSelect = document.getElementById("eservices-village");
+  const talukInput = document.getElementById("eservices-taluk");
+  const villageInput = document.getElementById("eservices-village");
 
-  if (!distSelect || !talukSelect || !villageSelect) return;
+  if (!distSelect || !talukInput || !villageInput) return;
 
-  const currentLang = localStorage.getItem("lang") || "en";
+  // Clear inputs on district change
+  talukInput.value = "";
+  villageInput.value = "";
 
-  // Reset
-  talukSelect.innerHTML = `<option value="">${currentLang === "ta" ? "-- வட்டம் தேர்ந்தெடுக்கவும் --" : "-- Select Taluk --"}</option>`;
-  villageSelect.innerHTML = `<option value="">${currentLang === "ta" ? "-- கிராமம் தேர்ந்தெடுக்கவும் --" : "-- Select Village --"}</option>`;
-  talukSelect.disabled = true;
-  villageSelect.disabled = true;
-
-  const dist = distSelect.value;
-  if (!dist || !landLocations[dist]) return;
-
-  const taluks = Object.keys(landLocations[dist].taluks);
-  taluks.forEach((t) => {
-    const opt = document.createElement("option");
-    opt.value = t;
-    opt.innerText = t;
-    talukSelect.appendChild(opt);
-  });
-
-  talukSelect.disabled = false;
+  // Reset helper labels
+  const hDistrict = document.getElementById("helper-district");
+  const hTaluk = document.getElementById("helper-taluk");
+  const hVillage = document.getElementById("helper-village");
+  if (hDistrict) hDistrict.innerText = distSelect.value || "--";
+  if (hTaluk) hTaluk.innerText = "--";
+  if (hVillage) hVillage.innerText = "--";
 };
 
-window.populateVillages = function () {
-  const distSelect = document.getElementById("eservices-district");
-  const talukSelect = document.getElementById("eservices-taluk");
-  const villageSelect = document.getElementById("eservices-village");
+// Autocomplete helper for e-Services fields
+function setupAutocompleteField(inputId, suggestionsId, getQueryString, getMockList) {
+  const input = document.getElementById(inputId);
+  const suggestionsDiv = document.getElementById(suggestionsId);
+  if (!input || !suggestionsDiv) return;
 
-  if (!distSelect || !talukSelect || !villageSelect) return;
+  let debounceTimeout = null;
 
-  const currentLang = localStorage.getItem("lang") || "en";
+  const showDefaults = () => {
+    const mockList = getMockList();
+    const currentLang = localStorage.getItem("lang") || "en";
+    
+    if (mockList && mockList.length > 0) {
+      suggestionsDiv.innerHTML = mockList
+        .map((item) => `
+          <div class="suggestion-item" data-val="${item}" style="padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; color: #333; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-map-marker-alt" style="color: var(--primary-green); margin-right: 8px;"></i>
+            <strong>${item}</strong>
+          </div>
+        `)
+        .join("");
+      suggestionsDiv.style.display = "block";
+    } else {
+      suggestionsDiv.innerHTML = `
+        <div style="padding: 10px 12px; text-align: center; color: #888; font-size: 0.78rem;">
+          ${currentLang === 'ta' ? 'தேட டைப் செய்யத் தொடங்குங்கள்...' : 'Start typing to search locations...'}
+        </div>
+      `;
+      suggestionsDiv.style.display = "block";
+    }
 
-  villageSelect.innerHTML = `<option value="">${currentLang === "ta" ? "-- கிராமம் தேர்ந்தெடுக்கவும் --" : "-- Select Village --"}</option>`;
-  villageSelect.disabled = true;
+    // Add click event listeners to suggestion items
+    const items = suggestionsDiv.querySelectorAll(".suggestion-item");
+    items.forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        input.value = item.getAttribute("data-val");
+        suggestionsDiv.innerHTML = "";
+        suggestionsDiv.style.display = "none";
+        input.dispatchEvent(new Event("change"));
+      });
+    });
+  };
 
-  const dist = distSelect.value;
-  const taluk = talukSelect.value;
-
-  if (
-    !dist ||
-    !taluk ||
-    !landLocations[dist] ||
-    !landLocations[dist].taluks[taluk]
-  )
-    return;
-
-  const villages = landLocations[dist].taluks[taluk];
-  villages.forEach((v) => {
-    const opt = document.createElement("option");
-    opt.value = v;
-    opt.innerText = v;
-    villageSelect.appendChild(opt);
+  input.addEventListener("focus", showDefaults);
+  input.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showDefaults();
   });
 
-  villageSelect.disabled = false;
-};
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimeout);
+    const val = input.value.trim();
+    if (val.length < 2) {
+      showDefaults();
+      return;
+    }
+
+    debounceTimeout = setTimeout(async () => {
+      const q = getQueryString(val);
+      if (!q) return;
+
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1`
+        );
+        const data = await response.json();
+        if (data && data.length > 0) {
+          suggestionsDiv.innerHTML = data
+            .map((item) => {
+              const name = item.address.village || item.address.hamlet || item.address.suburb || item.address.town || item.address.city_district || item.display_name.split(",")[0];
+              const parent = item.display_name.split(",").slice(1, 3).join(",").trim();
+              return `
+                <div class="suggestion-item" data-val="${name}" style="padding: 10px 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; color: #333; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='#f1f8e9'" onmouseout="this.style.background='transparent'">
+                  <i class="fas fa-search" style="color: #666; margin-right: 8px;"></i>
+                  <strong>${name}</strong> <span style="font-size: 0.72rem; color: #888;">(${parent})</span>
+                </div>
+              `;
+            })
+            .join("");
+
+          const items = suggestionsDiv.querySelectorAll(".suggestion-item");
+          items.forEach((item) => {
+            item.addEventListener("click", (e) => {
+              e.stopPropagation();
+              input.value = item.getAttribute("data-val");
+              suggestionsDiv.innerHTML = "";
+              suggestionsDiv.style.display = "none";
+              input.dispatchEvent(new Event("change"));
+            });
+          });
+        } else {
+          suggestionsDiv.innerHTML = `
+            <div style="padding: 10px 12px; text-align: center; color: #888; font-size: 0.78rem;">
+              No matches found.
+            </div>
+          `;
+        }
+      } catch (err) {
+        console.warn("Autocomplete query failed:", err);
+      }
+    }, 400);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target !== input && e.target !== suggestionsDiv) {
+      suggestionsDiv.innerHTML = "";
+      suggestionsDiv.style.display = "none";
+    }
+  });
+}
 
 window.triggerOTPAlert = function () {
   const dist = document.getElementById("eservices-district")?.value;
@@ -1415,3 +1915,169 @@ window.triggerOTPAlert = function () {
       : "OTP sent successfully!",
   );
 };
+
+// Toggle between interactive map and government registry verification portal guide
+window.switchSurveyTab = function(tab) {
+  const mapTab = document.getElementById("tab-map-btn");
+  const verifyTab = document.getElementById("tab-verify-btn");
+  const mapContainer = document.getElementById("survey-map-explorer-container");
+  const verifyContainer = document.getElementById("survey-verify-container");
+
+  if (!mapTab || !verifyTab || !mapContainer || !verifyContainer) return;
+
+  if (tab === 'map') {
+    mapTab.className = "survey-tab-btn active";
+    mapTab.style.background = "var(--primary-green)";
+    mapTab.style.color = "white";
+    mapTab.style.border = "none";
+    mapTab.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+
+    verifyTab.className = "survey-tab-btn";
+    verifyTab.style.background = "white";
+    verifyTab.style.color = "var(--primary-green)";
+    verifyTab.style.border = "1.5px solid var(--primary-green)";
+    verifyTab.style.boxShadow = "none";
+
+    mapContainer.style.display = "block";
+    verifyContainer.style.display = "none";
+
+    if (window.surveyMap) {
+      setTimeout(() => {
+        window.surveyMap.invalidateSize();
+      }, 100);
+    }
+  } else {
+    verifyTab.className = "survey-tab-btn active";
+    verifyTab.style.background = "var(--primary-green)";
+    verifyTab.style.color = "white";
+    verifyTab.style.border = "none";
+    verifyTab.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+
+    mapTab.className = "survey-tab-btn";
+    mapTab.style.background = "white";
+    mapTab.style.color = "var(--primary-green)";
+    mapTab.style.border = "1.5px solid var(--primary-green)";
+    mapTab.style.boxShadow = "none";
+
+    mapContainer.style.display = "none";
+    verifyContainer.style.display = "block";
+  }
+};
+
+// Clipboard copy helper for legal coordinates
+window.copyToClipboard = function (text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const icon = btn.querySelector("i");
+    const originalText = btn.innerText;
+    if (icon) {
+      icon.className = "fas fa-check";
+      icon.style.color = "#2e7d32";
+      setTimeout(() => {
+        icon.className = "far fa-copy";
+        icon.style.color = "";
+      }, 1500);
+    } else {
+      btn.innerText = (localStorage.getItem("lang") || "en") === "ta" ? "நகலெடுக்கப்பட்டது" : "Copied";
+      setTimeout(() => {
+        btn.innerText = originalText;
+      }, 1500);
+    }
+  }).catch((err) => {
+    console.error("Failed to copy text: ", err);
+  });
+};
+
+// Submitting registry lookup from the E-Services form
+window.submitEServicesMockSearch = function() {
+  const dist = document.getElementById("eservices-district")?.value;
+  const taluk = document.getElementById("eservices-taluk")?.value;
+  const village = document.getElementById("eservices-village")?.value;
+  const searchNum = document.getElementById("eservices-search-num")?.value;
+  const otp = document.getElementById("eservices-otp")?.value;
+
+  const currentLang = localStorage.getItem("lang") || "en";
+
+  if (!dist || !taluk || !village || !searchNum) {
+    alert(currentLang === 'ta' ? 'அனைத்து விவரங்களையும் பூர்த்தி செய்க.' : 'Please fill all details.');
+    return;
+  }
+
+  if (!otp || otp.trim().length < 4) {
+    alert(currentLang === 'ta' ? 'முறையான கடவுச்சொல்லைப் பதிக.' : 'Please enter a valid OTP code.');
+    return;
+  }
+
+  // Update Helper Labels
+  const hDistrict = document.getElementById("helper-district");
+  const hTaluk = document.getElementById("helper-taluk");
+  const hVillage = document.getElementById("helper-village");
+  const hSurvey = document.getElementById("helper-survey");
+  if (hDistrict) hDistrict.innerText = dist;
+  if (hTaluk) hTaluk.innerText = taluk;
+  if (hVillage) hVillage.innerText = village;
+  if (hSurvey) hSurvey.innerText = searchNum;
+
+  // Set Search Inputs
+  const placeInput = document.getElementById("survey-location-input");
+  const numberInput = document.getElementById("survey-number-input");
+  if (placeInput) placeInput.value = `${village}, ${taluk}, ${dist}`;
+  if (numberInput) numberInput.value = searchNum;
+
+  // Switch back to Map Tab to show the generated plots
+  window.switchSurveyTab('map');
+
+  // Trigger search using the village and survey number geocoding
+  window.searchLandRecords();
+};
+
+// Setup initial autocomplete triggers on page load
+document.addEventListener("DOMContentLoaded", () => {
+  setupAutocompleteField(
+    "eservices-taluk",
+    "eservices-taluk-suggestions",
+    (val) => {
+      const dist = document.getElementById("eservices-district")?.value;
+      return dist ? `${val}, ${dist}, Tamil Nadu` : `${val}, Tamil Nadu`;
+    },
+    () => {
+      const dist = document.getElementById("eservices-district")?.value;
+      if (dist && landLocations[dist]) {
+        return Object.keys(landLocations[dist].taluks);
+      }
+      return [];
+    }
+  );
+
+  setupAutocompleteField(
+    "eservices-village",
+    "eservices-village-suggestions",
+    (val) => {
+      const dist = document.getElementById("eservices-district")?.value;
+      const taluk = document.getElementById("eservices-taluk")?.value;
+      if (dist && taluk) {
+        return `${val}, ${taluk}, ${dist}, Tamil Nadu`;
+      }
+      return dist ? `${val}, ${dist}, Tamil Nadu` : `${val}, Tamil Nadu`;
+    },
+    () => {
+      const dist = document.getElementById("eservices-district")?.value;
+      const taluk = document.getElementById("eservices-taluk")?.value;
+      if (dist && taluk && landLocations[dist] && landLocations[dist].taluks[taluk]) {
+        return landLocations[dist].taluks[taluk];
+      }
+      return [];
+    }
+  );
+
+  // Hook change events to update the helper labels instantly
+  document.getElementById("eservices-taluk")?.addEventListener("change", (e) => {
+    const hTaluk = document.getElementById("helper-taluk");
+    if (hTaluk) hTaluk.innerText = e.target.value || "--";
+  });
+
+  document.getElementById("eservices-village")?.addEventListener("change", (e) => {
+    const hVillage = document.getElementById("helper-village");
+    if (hVillage) hVillage.innerText = e.target.value || "--";
+  });
+});
+
