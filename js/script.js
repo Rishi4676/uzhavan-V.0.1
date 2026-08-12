@@ -3,6 +3,8 @@
  * Includes: Multi-language, Weather (Open-Meteo), Chatbot (OpenRouter), and Real-time News
  */
 
+import "./farmer.js";
+
 // --- 1. LANGUAGE & TRANSLATIONS ---
 const translations = {
   en: {
@@ -5285,12 +5287,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   if (document.getElementById("advisory-display")) {
     window.updateDailyAdvisory();
-  }
-
-  // Load the interactive farmer assistant globally
-  if (typeof window !== "undefined") {
-    const script = document.createElement("script");
-    script.src = "js/farmer.js";
-    document.body.appendChild(script);
   }
 });
