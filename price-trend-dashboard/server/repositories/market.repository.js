@@ -7,7 +7,8 @@ if (!fs.existsSync(dbPath)) {
   dbPath = path.join(__dirname, "../market.db");
 }
 
-const db = new DatabaseSync(dbPath);
+const isVercel = !!process.env.VERCEL;
+const db = new DatabaseSync(dbPath, isVercel ? { readOnly: true } : {});
 
 // Initialize database schema
 function initDatabase() {
@@ -70,7 +71,9 @@ function initDatabase() {
   `);
 }
 
-initDatabase();
+if (!isVercel) {
+  initDatabase();
+}
 
 module.exports = {
   db,

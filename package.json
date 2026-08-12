@@ -2,6 +2,9 @@
   "name": "part-1-project",
   "version": "1.0.0",
   "description": "",
+  "engines": {
+    "node": "22.x"
+  },
   "main": "index.js",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
