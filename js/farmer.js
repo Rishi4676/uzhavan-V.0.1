@@ -8,6 +8,14 @@ let hasSpokenOnLoad = false;
 let recognition = null;
 let isListening = false;
 
+// Load stylesheet dynamically if not already loaded
+if (!document.querySelector('link[href*="farmer.css"]')) {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "/css/farmer.css";
+  document.head.appendChild(link);
+}
+
 // Voice commands mapping for navigation
 const commands = {
   home: {
@@ -80,14 +88,6 @@ function getLanguage() {
 // Function to inject farmer DOM globally
 function injectFarmer() {
   if (document.querySelector(".farmer-corner-container")) return; // Already exists
-
-  // Load stylesheet dynamically if not already loaded
-  if (!document.querySelector('link[href*="farmer.css"]')) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "css/farmer.css";
-    document.head.appendChild(link);
-  }
 
   const currentLang = getLanguage();
   const labelText = (window.translations && window.translations[currentLang] && window.translations[currentLang].voice_label)
@@ -421,6 +421,147 @@ function clickElementByText(text) {
         startRecognition();
       }, 1500);
     });
+    return true;
+  }
+  return false;
+}
+
+// Helper functions for cursor and text manipulation
+function moveCursorUp() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'TEXTAREA')) {
+    const lines = activeEl.value.split('\n');
+    const currentLine = activeEl.selectionStart;
+    let lineStart = 0;
+    let lineNum = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lineStart + lines[i].length >= currentLine) {
+        lineNum = i;
+        break;
+      }
+      lineStart += lines[i].length + 1; // +1 for newline
+    }
+
+    if (lineNum > 0) {
+      const prevLineStart = lineStart - lines[lineNum - 1].length - 1;
+      const newPos = Math.min(prevLineStart + lines[lineNum - 1].length, activeEl.selectionStart);
+      activeEl.setSelectionRange(newPos, newPos);
+      activeEl.focus();
+      return true;
+    }
+  }
+  return false;
+}
+
+function moveCursorDown() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'TEXTAREA')) {
+    const lines = activeEl.value.split('\n');
+    const currentLine = activeEl.selectionStart;
+    let lineStart = 0;
+    let lineNum = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lineStart + lines[i].length >= currentLine) {
+        lineNum = i;
+        break;
+      }
+      lineStart += lines[i].length + 1; // +1 for newline
+    }
+
+    if (lineNum < lines.length - 1) {
+      const nextLineStart = lineStart + lines[lineNum].length + 1;
+      const newPos = Math.min(nextLineStart + (currentLine - lineStart), activeEl.value.length);
+      activeEl.setSelectionRange(newPos, newPos);
+      activeEl.focus();
+      return true;
+    }
+  }
+  return false;
+}
+
+function moveCursorLeft() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    const pos = activeEl.selectionStart;
+    if (pos > 0) {
+      activeEl.setSelectionRange(pos - 1, pos - 1);
+      activeEl.focus();
+      return true;
+    }
+  }
+  return false;
+}
+
+function moveCursorRight() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    const pos = activeEl.selectionStart;
+    if (pos < activeEl.value.length) {
+      activeEl.setSelectionRange(pos + 1, pos + 1);
+      activeEl.focus();
+      return true;
+    }
+  }
+  return false;
+}
+
+function selectAll() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+    activeEl.select();
+    return true;
+  }
+  return false;
+}
+
+function deleteSelectedText() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    const start = activeEl.selectionStart;
+    const end = activeEl.selectionEnd;
+    if (start !== end) {
+      const value = activeEl.value;
+      activeEl.value = value.slice(0, start) + value.slice(end);
+      activeEl.setSelectionRange(start, start);
+      activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+      activeEl.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }
+  }
+  return false;
+}
+
+function backspace() {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    const start = activeEl.selectionStart;
+    const end = activeEl.selectionEnd;
+    let newStart = start;
+    if (start === end && start > 0) {
+      newStart = start - 1;
+    }
+    const value = activeEl.value;
+    activeEl.value = value.slice(0, newStart) + value.slice(end);
+    activeEl.setSelectionRange(newStart, newStart);
+    activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+    activeEl.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+  return false;
+}
+
+function insertTextAtCursor(text) {
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+    const start = activeEl.selectionStart;
+    const end = activeEl.selectionEnd;
+    const value = activeEl.value;
+    activeEl.value = value.slice(0, start) + text + value.slice(end);
+    activeEl.setSelectionRange(start + text.length, start + text.length);
+    activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+    activeEl.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }
   return false;
